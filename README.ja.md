@@ -66,7 +66,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | このインストールが動くか: バージョン、Python、プラットフォーム、コーデック、各形式の往復 |
 | `anypatch --version` | `anypatch.version.VERSION` | インストールされているバージョン |
 
-`apply` と `merge` の `--clean <file>` は、入力にすでにパッチが当たっているときのクリーンなソースを指定します。`--description` は APS、EBP、PPF、RUP のパッチが持つ文字列を設定します。出力はすべて書き込む前に作るため、拒否された場合はファイルが残りません。エラーは標準エラー出力に出し、終了コードは 1 です。
+`apply` と `merge` の `--clean <file>` は、入力にすでにパッチが当たっているときのクリーンなソースを指定します。`--description` は APS、BPS、EBP、PPF、RUP のパッチが持つ文字列を設定します。出力はすべて書き込む前に作るため、拒否された場合はファイルが残りません。エラーは標準エラー出力に出し、終了コードは 1 です。
 
 ## 形式
 
@@ -75,8 +75,8 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | IPS | はい | はい | `.ips` | なし。16 MiB を超える変更は IPS32 で書き出します |
 | EBP | はい | はい | `.ebp` | なし。`EOF` の後ろに JSON のメタデータを持つ IPS |
 | ZPS | はい | はい | `.zps`、`.ip1` | 横に置く `.hdr`。ソースの先頭 64 バイトで、CRC の組で照合します |
-| N64 用 APS | はい、ネイティブとバイトスワップの両方 | ネイティブ | `.aps` | ヘッダのカートコード、地域、CRC の組 |
-| GBA 用 APS | はい | はい、`--format aps-gba` で | `.aps` | 元のサイズと、64 KiB ブロックごとの CRC16。ファイルを伸ばすパッチは、RomPatcher.js では元の検査を切った場合だけ読めます |
+| N64 用 APS | はい、ネイティブとバイトスワップの両方 | ネイティブ | `.aps` | ソースが N64 ROM のときはカートコード、地域、CRC の組。それ以外は RomPatcher.js と同じく、それらのないヘッダ |
+| GBA 用 APS | はい | はい、`--format aps-gba` で | `.aps` | 元のサイズと、64 KiB ブロックごとの CRC16。短い最後のブロックはゼロ埋めの有無どちらでも読みます。RomPatcher.js が読めるのは、サイズが変わらず、短い最後のブロックが変更されていない場合だけです |
 | UPS | はい | はい | `.ups` | 元と結果の CRC32 |
 | BPS | はい | はい | `.bps` | 元と結果の CRC32 |
 | PPF 1.0、2.0、3.0 | はい | 元に戻すためのデータ付きの 3.0 として | `.ppf` | PPF 2.0 は元のサイズとブロックチェック、PPF 3.0 はブロックチェックと元に戻すためのデータ |
@@ -131,6 +131,7 @@ uv run anypatch doctor
 | ゲート | コマンド |
 |:--|:--|
 | テスト、ステートメントとブランチ 100% のゲート付き | `uv run pytest --cov` |
+| 境界ファイルを参照ツールと交換 | `PYTHONPATH=src python scripts/interop.py --tool xdelta3 --work <dir>` |
 | リント | `uv run ruff check .` |
 | フォーマット | `uv run ruff format --check .` |
 | 型、strict | `uv run mypy` |

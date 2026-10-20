@@ -66,7 +66,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | 這次安裝能否運作：版本、Python、平台、編解碼器，以及每種格式的往返檢查 |
 | `anypatch --version` | `anypatch.version.VERSION` | 已安裝的版本 |
 
-`apply` 和 `merge` 的 `--clean <file>` 在輸入已帶有修補時指定乾淨的來源。`--description` 設定 APS、EBP、PPF 或 RUP 修補檔攜帶的文字。所有輸出都在寫入任何內容之前產生，所以拒絕時不會留下檔案。錯誤寫到標準錯誤，結束碼為 1。
+`apply` 和 `merge` 的 `--clean <file>` 在輸入已帶有修補時指定乾淨的來源。`--description` 設定 APS、BPS、EBP、PPF 或 RUP 修補檔攜帶的文字。所有輸出都在寫入任何內容之前產生，所以拒絕時不會留下檔案。錯誤寫到標準錯誤，結束碼為 1。
 
 ## 格式
 
@@ -75,8 +75,8 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | IPS | 是 | 是 | `.ips` | 沒有。超過 16 MiB 的改動寫成 IPS32 |
 | EBP | 是 | 是 | `.ebp` | 沒有。在 `EOF` 之後附 JSON 中繼資料的 IPS |
 | ZPS | 是 | 是 | `.zps`、`.ip1` | 旁邊的 `.hdr`，即來源的首 64 個位元組，按 CRC 組合比對 |
-| N64 用 APS | 是，原生或位元組交換次序 | 原生次序 | `.aps` | 檔頭中的卡帶代碼、地區和 CRC 組合 |
-| GBA 用 APS | 是 | 是，用 `--format aps-gba` | `.aps` | 來源大小，以及每個 64 KiB 區塊的 CRC16。加長檔案的修補檔，RomPatcher.js 只有在關閉來源檢查時才能讀取 |
+| N64 用 APS | 是，原生或位元組交換次序 | 原生次序 | `.aps` | 來源是 N64 ROM 時為卡帶代碼、地區和 CRC 組合；否則與 RomPatcher.js 一樣，寫入不含這些欄位的檔頭 |
+| GBA 用 APS | 是 | 是，用 `--format aps-gba` | `.aps` | 來源大小，以及每個 64 KiB 區塊的 CRC16。較短的最後區塊無論有沒有補零都能讀取。只有大小不變且較短的最後區塊未被修改時，RomPatcher.js 才能讀取 |
 | UPS | 是 | 是 | `.ups` | 來源和結果的 CRC32 |
 | BPS | 是 | 是 | `.bps` | 來源和結果的 CRC32 |
 | PPF 1.0、2.0、3.0 | 是 | 寫成附還原資料的 3.0 | `.ppf` | PPF 2.0 的來源大小和區塊檢查；PPF 3.0 的區塊檢查和還原資料 |
@@ -131,6 +131,7 @@ uv run anypatch doctor
 | 檢查 | 指令 |
 |:--|:--|
 | 測試，附語句和分支 100% 的門檻 | `uv run pytest --cov` |
+| 與參考工具交換邊界檔案 | `PYTHONPATH=src python scripts/interop.py --tool xdelta3 --work <dir>` |
 | 程式碼檢查 | `uv run ruff check .` |
 | 格式 | `uv run ruff format --check .` |
 | 型別，strict | `uv run mypy` |

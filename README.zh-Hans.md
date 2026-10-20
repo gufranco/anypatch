@@ -66,7 +66,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | 这次安装能否工作：版本、Python、平台、编解码器，以及每种格式的往返检查 |
 | `anypatch --version` | `anypatch.version.VERSION` | 已安装的版本 |
 
-`apply` 和 `merge` 的 `--clean <file>` 在输入已带有补丁时指定干净的源文件。`--description` 设置 APS、EBP、PPF 或 RUP 补丁携带的文字。所有输出都在写入任何内容之前生成，所以拒绝时不会留下文件。错误写到标准错误，退出码为 1。
+`apply` 和 `merge` 的 `--clean <file>` 在输入已带有补丁时指定干净的源文件。`--description` 设置 APS、BPS、EBP、PPF 或 RUP 补丁携带的文字。所有输出都在写入任何内容之前生成，所以拒绝时不会留下文件。错误写到标准错误，退出码为 1。
 
 ## 格式
 
@@ -75,8 +75,8 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | IPS | 是 | 是 | `.ips` | 无。超过 16 MiB 的改动写成 IPS32 |
 | EBP | 是 | 是 | `.ebp` | 无。在 `EOF` 之后带 JSON 元数据的 IPS |
 | ZPS | 是 | 是 | `.zps`、`.ip1` | 旁边的 `.hdr`，即源文件的前 64 字节，按 CRC 对比较 |
-| N64 用 APS | 是，原生或字节交换顺序 | 原生顺序 | `.aps` | 文件头中的卡带代码、地区和 CRC 对 |
-| GBA 用 APS | 是 | 是，用 `--format aps-gba` | `.aps` | 源文件大小，以及每个 64 KiB 块的 CRC16。加长文件的补丁，RomPatcher.js 只有在关闭源文件检查时才能读取 |
+| N64 用 APS | 是，原生或字节交换顺序 | 原生顺序 | `.aps` | 源文件是 N64 ROM 时为卡带代码、地区和 CRC 对；否则与 RomPatcher.js 一样，写入不含这些字段的文件头 |
+| GBA 用 APS | 是 | 是，用 `--format aps-gba` | `.aps` | 源文件大小，以及每个 64 KiB 块的 CRC16。较短的最后一块无论是否补零都能读取。只有大小不变且较短的最后一块未被修改时，RomPatcher.js 才能读取 |
 | UPS | 是 | 是 | `.ups` | 源文件和结果的 CRC32 |
 | BPS | 是 | 是 | `.bps` | 源文件和结果的 CRC32 |
 | PPF 1.0、2.0、3.0 | 是 | 写成带撤销数据的 3.0 | `.ppf` | PPF 2.0 的源文件大小和块校验；PPF 3.0 的块校验和撤销数据 |
@@ -131,6 +131,7 @@ uv run anypatch doctor
 | 检查 | 命令 |
 |:--|:--|
 | 测试，带语句和分支 100% 的门槛 | `uv run pytest --cov` |
+| 与参考工具交换边界文件 | `PYTHONPATH=src python scripts/interop.py --tool xdelta3 --work <dir>` |
 | 代码检查 | `uv run ruff check .` |
 | 格式 | `uv run ruff format --check .` |
 | 类型，strict | `uv run mypy` |

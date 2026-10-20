@@ -7,6 +7,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### What's new
 
 - GDIFF, the 1997 W3C generic diff format, is read and written with every command form, including 64-bit copy positions.
+- APS is written without the N64 header when the source is not an N64 ROM, and such patches from RomPatcher.js are read. An empty or short source can now be patched.
+- BPS carries `--description` as its metadata, and EBP writes the title, author and description fields EBPatcher and CoilSnake read.
+- Every format is tested on generated files at its own limits, and those files are exchanged with xdelta3, bsdiff, javaxdelta and RomPatcher.js in both directions.
+
+### Fixes
+
+- IPS stays plain IPS for an image over 16 MiB whose changes all sit below 16 MiB, and refuses cleanly instead of crashing when shrinking to exactly 16 MiB. EBP and ZPS follow the same rule.
+- IPS reads a record at offset 0x454F46, which RomPatcher.js writes, when the bytes after `EOF` are not a size or metadata.
+- A VCDIFF window or instruction larger than its declared size is refused before any output is produced, and a window past the size ceiling is refused before it is decoded.
+- PPF reads the GI block check for any nonzero image type, as ApplyPPF does.
+- APS for GBA accepts a short last block's CRC16 with or without zero padding.
+- ZPS refuses a source shorter than its 64-byte binding instead of writing a patch nothing could apply.
 
 ## 0.4.0
 

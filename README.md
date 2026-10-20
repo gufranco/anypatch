@@ -66,7 +66,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | Whether this installation works: version, Python, platform, the codecs, and a round trip through every format |
 | `anypatch --version` | `anypatch.version.VERSION` | The installed version |
 
-`--clean <file>` on `apply` and `merge` names the clean source when the input already carries a patch. `--description` sets the text an APS, EBP, PPF or RUP patch carries. Every output is computed before anything is written, so a refusal leaves no file behind. Errors go to standard error and the exit code is 1.
+`--clean <file>` on `apply` and `merge` names the clean source when the input already carries a patch. `--description` sets the text an APS, BPS, EBP, PPF or RUP patch carries. Every output is computed before anything is written, so a refusal leaves no file behind. Errors go to standard error and the exit code is 1.
 
 ## Formats
 
@@ -75,8 +75,8 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | IPS | yes | yes | `.ips` | Nothing. A change past 16 MiB is written as IPS32 |
 | EBP | yes | yes | `.ebp` | Nothing. IPS with JSON metadata after `EOF` |
 | ZPS | yes | yes | `.zps`, `.ip1` | The `.hdr` beside it, the source's first 64 bytes, compared by CRC pair |
-| APS for N64 | yes, native or byte-swapped | native | `.aps` | Cart code, country and CRC pair in its header |
-| APS for GBA | yes | yes, with `--format aps-gba` | `.aps` | The source size and a CRC16 of each 64 KiB block. RomPatcher.js reads one that grows the file only with its source check off |
+| APS for N64 | yes, native or byte-swapped | native | `.aps` | Cart code, country and CRC pair when the source is an N64 ROM; otherwise the header without them, as RomPatcher.js writes it |
+| APS for GBA | yes | yes, with `--format aps-gba` | `.aps` | The source size and a CRC16 of each 64 KiB block; a short last block is read with or without zero padding. RomPatcher.js reads one only when the size stays the same and a short last block is unchanged |
 | UPS | yes | yes | `.ups` | CRC32 of the source and of the result |
 | BPS | yes | yes | `.bps` | CRC32 of the source and of the result |
 | PPF 1.0, 2.0, 3.0 | yes | as 3.0 with undo data | `.ppf` | PPF 2.0 source size and block check; PPF 3.0 block check and undo data |
@@ -131,6 +131,7 @@ uv run anypatch doctor
 | Gate | Command |
 |:--|:--|
 | Tests, with the 100% statement and branch gate | `uv run pytest --cov` |
+| Exchange the boundary files with a reference tool | `PYTHONPATH=src python scripts/interop.py --tool xdelta3 --work <dir>` |
 | Lint | `uv run ruff check .` |
 | Format | `uv run ruff format --check .` |
 | Types, strict | `uv run mypy` |
