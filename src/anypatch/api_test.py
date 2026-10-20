@@ -30,9 +30,9 @@ class TestTheCatalogue:
 
     @pytest.mark.parametrize(
         ("kind", "reads", "writes"),
-        [(Format.IPS, True, True), (Format.APS_GBA, True, False), (Format.PMSR, True, False)],
+        [(Format.IPS, True, True), (Format.APS_GBA, True, True), (Format.PMSR, True, True)],
     )
-    def test_read_only_formats_say_so(self, kind, reads, writes):
+    def test_each_format_says_what_it_reads_and_writes(self, kind, reads, writes):
         # Arrange
         listed = {one.format: one for one in api.formats()}
 

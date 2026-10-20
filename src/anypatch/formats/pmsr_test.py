@@ -214,3 +214,51 @@ class TestTheSizeCeiling:
 
         # Assert
         assert "ceiling" in str(raised.value)
+
+
+class TestWriting:
+    def test_each_changed_span_becomes_one_record(self):
+        # Arrange
+        base = paper_mario()
+        after = edited(edited(base, 0x1000, b"star"), 0x20, b"rod!")
+
+        # Act
+        patch = pmsr.build(base, after)
+
+        # Assert
+        assert patch == star_rod([(0x20, b"rod!"), (0x1000, b"star")])
+
+    def test_a_target_that_grows_writes_its_tail_as_a_record(self):
+        # Arrange
+        base = paper_mario()
+        after = base + b"tail"
+
+        # Act
+        patch = pmsr.build(base, after)
+
+        # Assert
+        assert pmsr.apply(base, patch) == after
+
+    def test_any_source_but_paper_mario_is_refused(self):
+        # Arrange
+        source = bytes(64)
+
+        # Act
+        with pytest.raises(pmsr.PmsrError) as raised:
+            pmsr.build(source, source + b"x")
+
+        # Assert
+        assert str(raised.value).startswith("made for Paper Mario USA 1.0")
+
+    def test_a_target_shorter_than_paper_mario_is_refused(self):
+        # Arrange
+        base = paper_mario()
+
+        # Act
+        with pytest.raises(pmsr.PmsrError) as raised:
+            pmsr.build(base, base[:-1])
+
+        # Assert
+        assert (
+            str(raised.value) == "a Star Rod patch only overwrites and extends, so it cannot shrink"
+        )

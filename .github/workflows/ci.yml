@@ -401,6 +401,12 @@ jobs:
           run("bsdiff", "source.bin", "target.bin", "theirs.bdf")
           run("anypatch", "apply", "source.bin", "theirs.bdf", "-o", "ours-read.bdf")
           same("ours-read.bdf", "anypatch misread a bsdiff patch")
+          Path("same-size.bin").write_bytes(target[: len(source)])
+          run("anypatch", "make", "source.bin", "same-size.bin", "-o", "ours.gba.aps", "--format", "aps-gba")
+          run("node", harness, "apply", "source.bin", "ours.gba.aps", "romjs-read.gba")
+          if Path("romjs-read.gba").read_bytes() != target[: len(source)]:
+              print("::error title=Wrong output::RomPatcher.js misread anypatch's APS for GBA patch")
+              sys.exit(1)
           print("every tool reads every other tool's patches")
           CHECK
         shell: bash

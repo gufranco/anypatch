@@ -4,6 +4,7 @@ import struct
 import zlib
 
 from anypatch.formats import imagesize
+from anypatch.formats.apswrite import differing_spans
 
 MAGIC = b"PMSR"
 YAY0 = b"Yay0"
@@ -16,6 +17,7 @@ TOP_BIT = 0x80
 DISTANCE = 0xFFF
 NIBBLE_BASE = 2
 LONG_BASE = 0x12
+SHRINKS = "a Star Rod patch only overwrites and extends, so it cannot shrink"
 
 
 class PmsrError(ValueError):
@@ -86,16 +88,31 @@ def records(patch: bytes) -> list[tuple[int, bytes]]:
     return found
 
 
-def apply(before: bytes, patch: bytes) -> bytes:
-    found = records(patch)
-    if all(before[at : at + len(data)] == data for at, data in found):
-        return before
+def _bound(before: bytes) -> None:
     crc = zlib.crc32(before)
     if (len(before), crc) != (BASE_SIZE, BASE_CRC):
         raise PmsrError(
             f"made for {BASE_NAME}, {BASE_SIZE:,} bytes with CRC32 {BASE_CRC:08X}; "
             f"this dump is {len(before):,} bytes with CRC32 {crc:08X}"
         )
+
+
+def build(before: bytes, after: bytes) -> bytes:
+    _bound(before)
+    if len(after) < len(before):
+        raise PmsrError(SHRINKS)
+    spans = differing_spans(before, after[: len(before)])
+    tail = [(len(before), after[len(before) :])] if len(after) > len(before) else []
+    found = [*spans, *tail]
+    body = b"".join(struct.pack(">II", at, len(data)) + data for at, data in found)
+    return MAGIC + struct.pack(">I", len(found)) + body
+
+
+def apply(before: bytes, patch: bytes) -> bytes:
+    found = records(patch)
+    if all(before[at : at + len(data)] == data for at, data in found):
+        return before
+    _bound(before)
     size = max([len(before), *(at + len(data) for at, data in found)])
     imagesize.check(size, source=len(before))
     out = bytearray(before.ljust(size, b"\x00"))

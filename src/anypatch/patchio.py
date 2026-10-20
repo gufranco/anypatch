@@ -105,6 +105,8 @@ BUILDERS: dict[Format, Builder] = {
     Format.PPF: lambda before, after, text: ppf.build(before, after, description=text),
     Format.RUP: lambda before, after, text: rup.build(before, after, description=text),
     Format.BDF: lambda before, after, _: bdf.build(before, after),
+    Format.APS_GBA: lambda before, after, _: apsgba.build(before, after),
+    Format.PMSR: lambda before, after, _: pmsr.build(before, after),
     Format.XDELTA: lambda before, after, _: vcdiff.build(before, after),
 }
 WRITABLE = (*BUILDERS, Format.ZPS)
@@ -176,8 +178,6 @@ def apply(source: bytes, patch: Patch) -> bytes:
 
 
 def encode(kind: Format, before: bytes, after: bytes, *, description: str = "") -> dict[str, bytes]:
-    if kind not in WRITABLE:
-        raise PatchError(f"{kind.value}: this format is read here, never written")
     try:
         if kind == Format.ZPS:
             payload, header = zps.build(before, after)

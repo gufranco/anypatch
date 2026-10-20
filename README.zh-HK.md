@@ -76,12 +76,12 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | EBP | 是 | 是 | `.ebp` | 沒有。在 `EOF` 之後附 JSON 中繼資料的 IPS |
 | ZPS | 是 | 是 | `.zps`、`.ip1` | 旁邊的 `.hdr`，即來源的首 64 個位元組，按 CRC 組合比對 |
 | N64 用 APS | 是，原生或位元組交換次序 | 原生次序 | `.aps` | 檔頭中的卡帶代碼、地區和 CRC 組合 |
-| GBA 用 APS | 是 | 否 | `.aps` | 來源大小，以及每個 64 KiB 區塊的 CRC16 |
+| GBA 用 APS | 是 | 是，用 `--format aps-gba` | `.aps` | 來源大小，以及每個 64 KiB 區塊的 CRC16。加長檔案的修補檔，RomPatcher.js 只有在關閉來源檢查時才能讀取 |
 | UPS | 是 | 是 | `.ups` | 來源和結果的 CRC32 |
 | BPS | 是 | 是 | `.bps` | 來源和結果的 CRC32 |
 | PPF 1.0、2.0、3.0 | 是 | 寫成附還原資料的 3.0 | `.ppf` | PPF 2.0 的來源大小和區塊檢查；PPF 3.0 的區塊檢查和還原資料 |
 | RUP，NINJA 2.0 | 是 | 是 | `.rup` | 每個檔案項目的來源和結果的 MD5 |
-| PMSR | 是 | 否 | `.mod`、`.pmsr` | Paper Mario USA 1.0，按大小和 CRC32；原樣或在 Yay0 之內皆可 |
+| PMSR | 是 | 是，用 `--format pmsr` | `.mod`、`.pmsr` | Paper Mario USA 1.0，按大小和 CRC32；讀取時原樣或在 Yay0 之內皆可，寫出為原樣 |
 | BDF，bsdiff 4 | 是 | 是 | `.bdf`、`.bsdiff` | 沒有 |
 | xdelta，VCDIFF | 是 | 是 | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | 修補檔附有時，每個視窗的 Adler-32 校驗和。讀取 xdelta3 的輸出，不論沒有二次壓縮、LZMA、DJW 或 FGK |
 

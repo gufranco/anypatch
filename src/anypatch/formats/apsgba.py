@@ -14,6 +14,7 @@ BLOCK = 0x10000
 RECORD_HEAD = 8
 RECORD = RECORD_HEAD + BLOCK
 CRC16_START = 0xFFFF
+IDENTICAL = "the files are identical, and an APS for GBA patch needs a record"
 
 
 class ApsGbaError(ValueError):
@@ -90,3 +91,18 @@ def apply(before: bytes, patch: bytes) -> bytes:
     for one in records:
         out[one.offset : one.offset + BLOCK] = _patched(before, one)
     return bytes(out[:target_size])
+
+
+def _written(before: bytes, after: bytes, at: int) -> bytes:
+    source, target = _block(before, at), _block(after, at)
+    head = struct.pack("<IHH", at, crc16(source), crc16(target))
+    return head + xor(source, target)
+
+
+def build(before: bytes, after: bytes) -> bytes:
+    span = max(len(before), len(after))
+    changed = [at for at in range(0, span, BLOCK) if _block(before, at) != _block(after, at)]
+    if not changed:
+        raise ApsGbaError(IDENTICAL)
+    sizes = struct.pack("<II", len(before), len(after))
+    return MAGIC + sizes + b"".join(_written(before, after, at) for at in changed)

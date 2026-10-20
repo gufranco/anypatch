@@ -76,12 +76,12 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | EBP | yes | yes | `.ebp` | Nothing. IPS with JSON metadata after `EOF` |
 | ZPS | yes | yes | `.zps`, `.ip1` | The `.hdr` beside it, the source's first 64 bytes, compared by CRC pair |
 | APS for N64 | yes, native or byte-swapped | native | `.aps` | Cart code, country and CRC pair in its header |
-| APS for GBA | yes | no | `.aps` | The source size and a CRC16 of each 64 KiB block |
+| APS for GBA | yes | yes, with `--format aps-gba` | `.aps` | The source size and a CRC16 of each 64 KiB block. RomPatcher.js reads one that grows the file only with its source check off |
 | UPS | yes | yes | `.ups` | CRC32 of the source and of the result |
 | BPS | yes | yes | `.bps` | CRC32 of the source and of the result |
 | PPF 1.0, 2.0, 3.0 | yes | as 3.0 with undo data | `.ppf` | PPF 2.0 source size and block check; PPF 3.0 block check and undo data |
 | RUP, NINJA 2.0 | yes | yes | `.rup` | MD5 of the source and of the result, per file entry |
-| PMSR | yes | no | `.mod`, `.pmsr` | Paper Mario USA 1.0, by size and CRC32; plain or inside Yay0 |
+| PMSR | yes | yes, with `--format pmsr` | `.mod`, `.pmsr` | Paper Mario USA 1.0, by size and CRC32; read plain or inside Yay0, written plain |
 | BDF, bsdiff 4 | yes | yes | `.bdf`, `.bsdiff` | Nothing |
 | xdelta, VCDIFF | yes | yes | `.xdelta`, `.vcdiff`, `.xd3`, `.delta` | An Adler-32 checksum of every window, when present. Reads xdelta3 output with no secondary compression, LZMA, DJW or FGK |
 

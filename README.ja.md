@@ -76,12 +76,12 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | EBP | はい | はい | `.ebp` | なし。`EOF` の後ろに JSON のメタデータを持つ IPS |
 | ZPS | はい | はい | `.zps`、`.ip1` | 横に置く `.hdr`。ソースの先頭 64 バイトで、CRC の組で照合します |
 | N64 用 APS | はい、ネイティブとバイトスワップの両方 | ネイティブ | `.aps` | ヘッダのカートコード、地域、CRC の組 |
-| GBA 用 APS | はい | いいえ | `.aps` | 元のサイズと、64 KiB ブロックごとの CRC16 |
+| GBA 用 APS | はい | はい、`--format aps-gba` で | `.aps` | 元のサイズと、64 KiB ブロックごとの CRC16。ファイルを伸ばすパッチは、RomPatcher.js では元の検査を切った場合だけ読めます |
 | UPS | はい | はい | `.ups` | 元と結果の CRC32 |
 | BPS | はい | はい | `.bps` | 元と結果の CRC32 |
 | PPF 1.0、2.0、3.0 | はい | 元に戻すためのデータ付きの 3.0 として | `.ppf` | PPF 2.0 は元のサイズとブロックチェック、PPF 3.0 はブロックチェックと元に戻すためのデータ |
 | RUP、NINJA 2.0 | はい | はい | `.rup` | ファイル項目ごとの、元と結果の MD5 |
-| PMSR | はい | いいえ | `.mod`、`.pmsr` | Paper Mario USA 1.0。サイズと CRC32 で照合します。そのままでも Yay0 の中でも読めます |
+| PMSR | はい | はい、`--format pmsr` で | `.mod`、`.pmsr` | Paper Mario USA 1.0。サイズと CRC32 で照合します。読み込みはそのままでも Yay0 の中でも、書き出しはそのまま |
 | BDF、bsdiff 4 | はい | はい | `.bdf`、`.bsdiff` | なし |
 | xdelta、VCDIFF | はい | はい | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | パッチが持つ場合、各ウィンドウの Adler-32 チェックサム。xdelta3 の出力を、二次圧縮なし、LZMA、DJW、FGK のいずれでも読み込みます |
 

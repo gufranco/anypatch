@@ -27,7 +27,7 @@ def run(*args: str):
 
 
 class TestMake:
-    @pytest.mark.parametrize("kind", WRITABLE)
+    @pytest.mark.parametrize("kind", [one for one in WRITABLE if one is not Format.PMSR])
     def test_the_command_writes_the_bytes_the_library_returns(self, kind, tmp_path):
         # Arrange
         after = edited(BASE, 0x200, b"\xde\xad") + b"tail"
@@ -35,7 +35,15 @@ class TestMake:
         target = tmp_path / f"fix.{kind.value}"
 
         # Act
-        result = run("make", paths["before_bin"], paths["after_bin"], "-o", str(target))
+        result = run(
+            "make",
+            paths["before_bin"],
+            paths["after_bin"],
+            "-o",
+            str(target),
+            "--format",
+            kind.value,
+        )
 
         # Assert
         assert result.exit_code == 0, result.output
@@ -80,7 +88,7 @@ class TestMake:
         assert "unknown patch extension" in result.output
         assert not target.exists()
 
-    def test_a_format_that_is_only_read_is_refused(self, tmp_path):
+    def test_a_star_rod_patch_needs_paper_mario(self, tmp_path):
         # Arrange
         paths = files(tmp_path, before_bin=BASE, after_bin=BASE)
 
@@ -97,7 +105,7 @@ class TestMake:
 
         # Assert
         assert result.exit_code == 1
-        assert "pmsr: this format is read here, never written" in result.output
+        assert "pmsr: made for Paper Mario USA 1.0" in result.output
 
     def test_a_file_it_cannot_read_is_reported(self, tmp_path):
         # Arrange

@@ -160,3 +160,48 @@ class TestTheSizeCeiling:
 
         # Assert
         assert "ceiling" in str(raised.value)
+
+
+class TestWriting:
+    def test_only_the_blocks_that_change_are_recorded(self):
+        # Arrange
+        before, after = SOURCE, AFTER
+
+        # Act
+        patch = apsgba.build(before, after)
+
+        # Assert
+        assert patch == PATCH
+
+    def test_a_target_that_grows_past_the_source_round_trips(self):
+        # Arrange
+        after = SOURCE + bytes(range(256)) * 300
+
+        # Act
+        patch = apsgba.build(SOURCE, after)
+
+        # Assert
+        assert apsgba.apply(SOURCE, patch) == after
+
+    def test_a_target_that_shrinks_round_trips(self):
+        # Arrange
+        after = edited(SOURCE, 5, b"\x01")[: BLOCK + 9]
+
+        # Act
+        patch = apsgba.build(SOURCE, after)
+
+        # Assert
+        assert apsgba.apply(SOURCE, patch) == after
+
+    def test_identical_files_cannot_make_a_patch_the_format_can_hold(self):
+        # Arrange
+        before = SOURCE
+
+        # Act
+        with pytest.raises(apsgba.ApsGbaError) as raised:
+            apsgba.build(before, before)
+
+        # Assert
+        assert (
+            str(raised.value) == "the files are identical, and an APS for GBA patch needs a record"
+        )

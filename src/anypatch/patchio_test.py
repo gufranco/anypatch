@@ -66,7 +66,7 @@ class TestFormats:
 
 
 class TestRoundTrips:
-    @pytest.mark.parametrize("kind", patchio.WRITABLE)
+    @pytest.mark.parametrize("kind", [one for one in patchio.WRITABLE if one is not Format.PMSR])
     def test_every_writable_format_turns_the_source_into_the_target(self, kind, tmp_path):
         # Arrange
         before = image()
@@ -264,17 +264,16 @@ class TestWriting:
         # Assert
         assert files == {".ips": b"IPS32" + bytes([1, 0, 0, 0x0F, 0, 1, 1]) + b"EEOF"}
 
-    @pytest.mark.parametrize("kind", [Format.APS_GBA, Format.PMSR])
-    def test_a_format_that_is_only_read_is_never_written(self, kind):
+    def test_a_star_rod_patch_is_written_only_for_paper_mario(self):
         # Arrange
         before = image()
 
         # Act
         with pytest.raises(patchio.PatchError) as raised:
-            patchio.encode(kind, before, before)
+            patchio.encode(Format.PMSR, before, before + b"x")
 
         # Assert
-        assert str(raised.value) == f"{kind.value}: this format is read here, never written"
+        assert str(raised.value).startswith("pmsr: made for Paper Mario USA 1.0")
 
     def test_an_ebp_carries_the_description_as_metadata(self):
         # Arrange

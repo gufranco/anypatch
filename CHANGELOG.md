@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### What's new
 
 - APS patches made for byte-swapped `.v64` dumps are read and applied to the native dump. All 21 community APS patches for the Mr. Backup Z64 apply and pass the boot checksum.
+- APS for GBA and PMSR are written as well as read, with `--format aps-gba` and `--format pmsr`. A PMSR patch is only made against Paper Mario USA 1.0.
 
 ## 0.2.0
 

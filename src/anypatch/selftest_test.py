@@ -25,7 +25,7 @@ class TestEveryFormat:
         # Assert
         assert check.detail == "reads and writes"
 
-    def test_a_read_only_format_says_so(self):
+    def test_star_rod_is_checked_by_decoding_a_patch(self):
         # Arrange
         kind = Format.PMSR
 
@@ -33,7 +33,7 @@ class TestEveryFormat:
         check = selftest.check(kind)
 
         # Assert
-        assert check.detail == "reads; never written"
+        assert check.detail == "reads and writes"
 
 
 class TestFailures:
