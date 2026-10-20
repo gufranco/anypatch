@@ -152,13 +152,14 @@ class TestTheOffsetsIpsCannotWrite:
         assert patch == b"IPS32" + bytes([1, 0, 0, 4, 0, 1, 1]) + b"EEOF"
         assert ipswrite.apply(before, patch) == after
 
-    def test_classic_ips_refuses_an_image_its_offsets_cannot_reach(self):
+    def test_classic_ips_refuses_a_change_its_offsets_cannot_reach(self):
         # Arrange
         before = bytes(ipswrite.LIMIT + 1)
+        after = changed(before, ipswrite.LIMIT, b"\x01")
 
         # Act
         with pytest.raises(ipswrite.IpsError) as raised:
-            ipswrite.build_variant(ipswrite.IPS, before, before)
+            ipswrite.build_variant(ipswrite.IPS, before, after)
 
         # Assert
         assert "IPS offsets cannot reach" in str(raised.value)
@@ -271,7 +272,12 @@ class TestEbp:
 
         # Assert
         assert ipswrite.apply(before, patch) == after
-        assert ipswrite.metadata(patch) == {"patcher": "EBPatcher", "title": "Mother 2 fix"}
+        assert ipswrite.metadata(patch) == {
+            "patcher": "EBPatcher",
+            "title": "Mother 2 fix",
+            "author": "",
+            "description": "",
+        }
 
     def test_a_plain_ips_has_no_metadata(self):
         # Arrange
@@ -298,8 +304,9 @@ class TestEbp:
         ("before", "after", "message"),
         [
             (bytes(0x100), bytes(0x80), "cannot shrink"),
-            (bytes(ipswrite.LIMIT + 4), bytes(ipswrite.LIMIT) + b"\x01" * 4, "past 16 MiB"),
+            (bytes(ipswrite.LIMIT + 4), bytes(ipswrite.LIMIT) + b"\x01" * 4, "stop below 16 MiB"),
         ],
+        ids=["shrink", "past-the-limit"],
     )
     def test_ebp_refuses_what_its_ips_body_cannot_hold(self, before, after, message):
         # Arrange
@@ -324,3 +331,25 @@ class TestTheSizeCeiling:
 
         # Assert
         assert "ceiling" in str(raised.value)
+
+
+class TestARecordAtTheEofOffset:
+    @pytest.mark.parametrize(
+        ("record", "written"),
+        [
+            (b"\x00\x02ab", b"ab"),
+            (b"\x00\x00\x00\x04Z", b"ZZZZ"),
+        ],
+        ids=["literal", "run"],
+    )
+    def test_one_written_by_rompatcher_js_is_read_as_a_record(self, record, written):
+        # Arrange
+        at = ipswrite.END_AS_OFFSET
+        before = bytes(at + 8)
+        patch = ipswrite.MAGIC + ipswrite.END + record + ipswrite.END
+
+        # Act
+        result = ipswrite.apply(before, patch)
+
+        # Assert
+        assert result == before[:at] + written + before[at + len(written) :]

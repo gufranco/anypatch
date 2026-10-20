@@ -250,7 +250,7 @@ class TestWriting:
 
         # Assert
         assert str(raised.value) == (
-            "zps: ZPS is IPS, so it cannot reach past 16 MiB; use IPS32, APS or xdelta"
+            "zps: ZPS is IPS, whose offsets and sizes stop below 16 MiB; use IPS32, APS or xdelta"
         )
 
     def test_an_ips_past_sixteen_mebibytes_comes_out_as_ips32(self):
@@ -284,4 +284,6 @@ class TestWriting:
         files = patchio.encode(Format.EBP, before, after, description="hi")
 
         # Assert
-        assert files[".ebp"].endswith(b'EOF{"patcher": "EBPatcher", "description": "hi"}')
+        assert files[".ebp"].endswith(
+            b'EOF{"patcher": "EBPatcher", "title": "", "author": "", "description": "hi"}'
+        )

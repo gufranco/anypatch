@@ -104,7 +104,7 @@ Builder = Callable[[bytes, bytes, str], bytes]
 BUILDERS: dict[Format, Builder] = {
     Format.IPS: lambda before, after, _: ipswrite.build(before, after),
     Format.EBP: lambda before, after, text: ipswrite.build_ebp(
-        before, after, {"description": text} if text else {}
+        before, after, {"description": text}
     ),
     Format.APS: lambda before, after, text: apswrite.build(before, after, description=text),
     Format.UPS: lambda before, after, _: ups.build(before, after),

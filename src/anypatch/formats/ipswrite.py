@@ -22,6 +22,7 @@ OFFSET_BYTES = 3
 SIZE_BYTES = 2
 RUN_TAIL = 3
 EBP_PATCHER = "EBPatcher"
+EBP_FIELDS = {"patcher": EBP_PATCHER, "title": "", "author": "", "description": ""}
 
 
 class IpsError(ValueError):
@@ -92,12 +93,17 @@ def _body(variant: Variant, before: bytes, after: bytes) -> bytes:
     return b"".join(b"".join(_records(variant, after, offset, chunk)) for offset, chunk in spans)
 
 
+def reaches(variant: Variant, before: bytes, after: bytes) -> bool:
+    sized = len(after) >= len(before) or len(after) < variant.limit
+    return sized and after[variant.limit :] == before[variant.limit : len(after)]
+
+
 def fits(before: bytes, after: bytes) -> bool:
-    return len(after) <= LIMIT and before[LIMIT : len(after)] == after[LIMIT:]
+    return reaches(IPS, before, after)
 
 
 def build_variant(variant: Variant, before: bytes, after: bytes) -> bytes:
-    if len(after) > variant.limit:
+    if not reaches(variant, before, after):
         raise IpsError(f"{variant.name} offsets cannot reach a {len(after):,}-byte image")
     shorter = _offset(variant, len(after)) if len(after) < len(before) else b""
     return variant.magic + _body(variant, before, after) + variant.end + shorter
@@ -109,10 +115,12 @@ def build(before: bytes, after: bytes) -> bytes:
 
 def build_ebp(before: bytes, after: bytes, metadata: Mapping[str, str]) -> bytes:
     if not fits(before, after):
-        raise IpsError("EBP is IPS, so it cannot reach past 16 MiB; use IPS32, APS or xdelta")
+        raise IpsError(
+            "EBP is IPS, whose offsets and sizes stop below 16 MiB; use IPS32, APS or xdelta"
+        )
     if len(after) < len(before):
         raise IpsError("EBP carries metadata where IPS keeps a size, so it cannot shrink a file")
-    text = json.dumps({"patcher": EBP_PATCHER, **metadata}).encode("utf-8")
+    text = json.dumps({**EBP_FIELDS, **metadata, "patcher": EBP_PATCHER}).encode("utf-8")
     return MAGIC + _body(IPS, before, after) + END + text
 
 
@@ -165,11 +173,31 @@ def variant_of(patch: bytes) -> Variant:
     raise IpsError("not an IPS patch: it does not start with PATCH or IPS32")
 
 
+def _is_tail(variant: Variant, tail: bytes) -> bool:
+    return not tail or len(tail) == variant.width or (variant is IPS and tail.startswith(b"{"))
+
+
+def _record_at(variant: Variant, patch: bytes, at: int) -> bool:
+    try:
+        size = _header(variant, patch, at)[1]
+        _payload(patch, at + variant.width + SIZE_BYTES, size)
+    except IpsError:
+        return False
+    return True
+
+
+def _ends(variant: Variant, patch: bytes, at: int) -> bool:
+    if patch[at : at + len(variant.end)] != variant.end:
+        return False
+    tail = patch[at + len(variant.end) :]
+    return _is_tail(variant, tail) or not _record_at(variant, patch, at)
+
+
 def _parsed(patch: bytes) -> tuple[Variant, list[tuple[int, bytes]], bytes]:
     variant = variant_of(patch)
     records: list[tuple[int, bytes]] = []
     at = len(variant.magic)
-    while patch[at : at + len(variant.end)] != variant.end:
+    while not _ends(variant, patch, at):
         offset, size = _header(variant, patch, at)
         data, at = _payload(patch, at + variant.width + SIZE_BYTES, size)
         records = [*records, (offset, data)]
