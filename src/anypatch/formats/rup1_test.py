@@ -75,6 +75,16 @@ class TestText:
         # Assert
         assert result == AFTER
 
+    def test_a_line_with_only_an_offset_is_an_empty_record_as_ninja_writes_it(self):
+        # Arrange
+        patch = text("2 7879\nf\n10 2121")
+
+        # Act
+        result = rup1.apply(SOURCE, patch)
+
+        # Assert
+        assert result == AFTER
+
     def test_unknown_checksums_are_skipped(self):
         # Arrange
         patch = text("2 7879", header="raw unk unk unk")

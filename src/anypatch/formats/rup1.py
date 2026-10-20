@@ -21,7 +21,7 @@ SAMPLE_HEAD = 0x1400000
 SAMPLE_TAIL = 0xA00000
 BODY_LIMIT = 3 * imagesize.LIMIT
 UNKNOWN = "unk"
-RECORD_LINE = re.compile(r"^([0-9A-Fa-f]+) ([0-9A-Fa-f]*)$")
+RECORD_LINE = re.compile(r"^([0-9A-Fa-f]+)(?: ([0-9A-Fa-f]*))?$")
 SYSTEMS = {"snes": romtypes.SNES, "mega": romtypes.MD, "gb": romtypes.GB}
 NAMES = (
     "raw",
@@ -147,9 +147,10 @@ def _given(digest: bytes) -> str:
 
 def _record(line: str) -> tuple[int, bytes]:
     found = RECORD_LINE.match(line)
-    if found is None or len(found[2]) % 2:
+    data = (found[2] or "") if found else ""
+    if found is None or len(data) % 2:
         raise Rup1Error(f"the line {line!r} is not a hex offset and hex bytes")
-    return int(found[1], 16), bytes.fromhex(found[2])
+    return int(found[1], 16), bytes.fromhex(data)
 
 
 def _text(body: bytes) -> tuple[Checks, list[tuple[int, bytes]]]:
