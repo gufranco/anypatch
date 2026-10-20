@@ -2,6 +2,12 @@
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [semantic versioning](https://semver.org/spec/v2.0.0.html). Release notes for each tag are on the [releases page](https://github.com/gufranco/anypatch/releases).
 
+## Unreleased
+
+### What's new
+
+- GDIFF, the 1997 W3C generic diff format, is read and written with every command form, including 64-bit copy positions.
+
 ## 0.4.0
 
 ### What's new

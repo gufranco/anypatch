@@ -83,6 +83,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | RUP, NINJA 2.0 | yes | yes | `.rup` | MD5 of the source and of the result, per file entry |
 | PMSR | yes | yes, with `--format pmsr` | `.mod`, `.pmsr` | Paper Mario USA 1.0, by size and CRC32; read plain or inside Yay0, written plain |
 | BDF, bsdiff 4 | yes | yes | `.bdf`, `.bsdiff` | Nothing |
+| GDIFF | yes | yes | `.gdiff`, `.gdf` | Nothing |
 | xdelta, VCDIFF | yes | yes | `.xdelta`, `.vcdiff`, `.xd3`, `.delta` | An Adler-32 checksum of every window, when present. Reads xdelta3 output with no secondary compression, LZMA, DJW or FGK |
 
 The contents decide the format; only an IPS body named `.zps` or `.ip1` is read as ZPS. Every patch is applied to the clean source on its own, and the bytes each one changes are compared. Two patches that write different values to one byte are refused, with every range and both values listed; identical writes merge. A patch whose format carries a source checksum is refused on any other file, naming both values, and when the source already holds the result it is reported as already applied. A patch that claims a result larger than both 1 GiB and its source is refused before anything is allocated.

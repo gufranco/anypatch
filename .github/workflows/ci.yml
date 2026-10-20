@@ -313,6 +313,70 @@ jobs:
           CHECK
         shell: bash
 
+  gdiff:
+    name: javaxdelta and anypatch read each other's GDIFF patches
+    runs-on: ubuntu-26.04
+    env:
+      JAVAXDELTA_SHA256: a661dfcb749053fc26eada2a0a8e619a8ead1ca9eda29e1698687aa2cdd80152
+      TROVE_SHA256: ad68a86cfd0255a2bc0525ce11ec49640caea7e34ff91eb89c3193dcccd77f05
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install anypatch and the reference tool
+        run: |
+          python -m pip install --disable-pip-version-check ".[cli]"
+          curl -sfL -o javaxdelta.jar https://repo1.maven.org/maven2/com/nothome/javaxdelta/2.0.1/javaxdelta-2.0.1.jar
+          curl -sfL -o trove.jar https://repo1.maven.org/maven2/trove/trove/1.0.2/trove-1.0.2.jar
+          echo "${JAVAXDELTA_SHA256}  javaxdelta.jar" | sha256sum -c -
+          echo "${TROVE_SHA256}  trove.jar" | sha256sum -c -
+
+      - name: Patches cross between anypatch and javaxdelta in both directions
+        run: |
+          python - <<'CHECK'
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          source = bytes((at * 2654435761 >> 16) & 0xFF for at in range(300000))
+          target = bytearray(source)
+          target[1000:1010] = b"0123456789"
+          target[200000:200040] = bytes(40)
+          target = bytes(target[:5000]) + bytes(target[90000:]) + bytes(target[5000:90000]) + b"tail" * 50
+          Path("source.bin").write_bytes(source)
+          Path("target.bin").write_bytes(target)
+          java = ["java", "-cp", "javaxdelta.jar:trove.jar"]
+
+          def run(*args):
+              done = subprocess.run(list(args), capture_output=True, text=True)
+              print(f"$ {' '.join(args)}\n{done.stdout}{done.stderr}")
+              if done.returncode != 0:
+                  print(f"::error title={args[0]} failed::{' '.join(args)}")
+                  sys.exit(1)
+
+          def same(path, who):
+              if Path(path).read_bytes() != target:
+                  print(f"::error title=Wrong output::{who}")
+                  sys.exit(1)
+
+          run("anypatch", "make", "source.bin", "target.bin", "-o", "ours.gdiff")
+          run(*java, "com.nothome.delta.GDiffPatcher", "source.bin", "ours.gdiff", "theirs-read.bin")
+          same("theirs-read.bin", "javaxdelta misread anypatch's GDIFF patch")
+          run(*java, "com.nothome.delta.Delta", "source.bin", "target.bin", "theirs.gdiff")
+          run("anypatch", "apply", "source.bin", "theirs.gdiff", "-o", "ours-read.bin")
+          same("ours-read.bin", "anypatch misread a javaxdelta GDIFF patch")
+          print("both tools read each other's patches")
+          CHECK
+        shell: bash
+
   romjs:
     name: RomPatcher.js, bsdiff and anypatch read each other's patches
     runs-on: ubuntu-26.04

@@ -9,3 +9,4 @@ anypatch is written from the specifications and open implementations below. They
 | IPS32 | The IPS32 parser in the Citron emulator | Not recorded; read only | Header and end marker read; nothing copied |
 | BPS | [byuu's BPS specification](https://floating.muncher.se/byuu/bps/bps_spec.html) | Specification | Format read |
 | BSDIFF40 | [bsdiff](https://www.daemonology.net/bsdiff/) by Colin Percival | BSD-2-Clause | Format read; bsdiff writes reference vectors |
+| GDIFF | [Generic Diff Format Specification](https://www.w3.org/TR/NOTE-gdiff-19970901) by Arthur van Hoff and Jonathan Payne; [javaxdelta](https://sourceforge.net/projects/javaxdelta/) 2.0.1 from Maven Central | W3C NOTE; MIT | Format read; javaxdelta 2.0.1 writes the reference vectors and reads anypatch's output |
