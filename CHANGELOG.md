@@ -12,7 +12,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - VPatch patches from NSIS are read in MD5 and CRC32 mode, with every entry of a multi-source file and with the header found through the pointer at the end of an installer, and written as one MD5 entry with `--format vpatch`.
 - JojoDiff patches are read and written with `--format jdf`. The format has no magic, so a JojoDiff patch is recognised by its `.jdf` extension.
 - DLDI drivers are applied to Nintendo DS apps: the driver replaces the stub in the app's DLDI section and is relocated as dlditool does it, including its byte-by-byte pointer scan. A driver larger than the space the app reserves is refused, where dlditool only warns. Drivers are read, never written.
-- Patches are exchanged with open-vcdiff, NINJA 1.01, HDiffPatch, NSIS VPatch and JojoDiff as well, and DLDI drivers are checked against dlditool.
+- xdelta 1.1 patches are read, plain or gzip-compressed and with or without their MD5 checks, and written plain with `--format xdelta1`. Patches from xdelta 1.0 and older, and patches made between gzip-decompressed files, are refused by name.
+- Patches are exchanged with open-vcdiff, NINJA 1.01, HDiffPatch, NSIS VPatch JojoDiff and xdelta 1.1 as well, and DLDI drivers are checked against dlditool.
 
 ### Fixes
 

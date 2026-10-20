@@ -29,6 +29,10 @@ NAMES = {
     Format.VPATCH: ("VPatch, NSIS", "MD5 or CRC32 of the source and of the result, per entry"),
     Format.JOJODIFF: ("JojoDiff", NOTHING),
     Format.DLDI: ("DLDI", "a DLDI section the app reserves, at least as large as the driver"),
+    Format.XDELTA1: (
+        "xdelta 1.1",
+        "MD5 and size of the source and of the result, unless made with --noverify",
+    ),
     Format.PAT: ("PAT, FireFlower", "the original value of every byte it changes"),
     Format.XDELTA: ("xdelta", "an Adler-32 checksum of every window, when present"),
 }
@@ -38,6 +42,7 @@ EXTRA_EXTENSIONS = {
     Format.RUP1: (".rup",),
     Format.PMSR: (".mod", ".pmsr"),
     Format.VPATCH: (".pat",),
+    Format.XDELTA1: (".xdelta",),
 }
 
 

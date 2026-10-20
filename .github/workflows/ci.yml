@@ -607,6 +607,42 @@ jobs:
           PYTHONPATH: src
         run: python scripts/interop.py --tool dlditool --work "$RUNNER_TEMP/interop"
 
+  xdelta1:
+    name: xdelta 1.1 and anypatch exchange every boundary patch
+    runs-on: ubuntu-26.04
+    env:
+      XDELTA1_COMMIT: 346b70280c8234a327a761e52610355628427341
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Build the reference tool
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libglib2.0-dev zlib1g-dev
+          cd "$RUNNER_TEMP"
+          git clone --quiet https://git.tizen.org/cgit/platform/upstream/xdelta1 xdelta1
+          git -C xdelta1 checkout --quiet "$XDELTA1_COMMIT"
+          mkdir -p bin config
+          printf '#define HAVE_GETTIMEOFDAY 1\n#define TIME_WITH_SYS_TIME 1\n#define STDC_HEADERS 1\n#define VERSION "1.1.4"\n#define PACKAGE "xdelta"\n' > config/config.h
+          cd xdelta1
+          # shellcheck disable=SC2046
+          cc -O1 -w -std=gnu89 -DHAVE_CONFIG_H -I"$RUNNER_TEMP/config" -I. -Ilibedsio \
+            $(pkg-config --cflags glib-2.0) -o "$RUNNER_TEMP/bin/xdelta1" \
+            xdmain.c xdelta.c xdapply.c xd_edsio.c getopt.c getopt1.c \
+            libedsio/{base64,default,edsio,edsio_edsio,fh,generic,library}.c \
+            libedsio/{maketime,md5c,partime,sha,simple}.c \
+            $(pkg-config --libs glib-2.0) -lz
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Exchange the boundary files in both directions
+        env:
+          PYTHONPATH: src
+        run: python scripts/interop.py --tool xdelta1 --work "$RUNNER_TEMP/interop"
+
   gdiff:
     name: javaxdelta and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04

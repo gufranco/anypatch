@@ -26,6 +26,7 @@ from anypatch.formats import (
     ups,
     vcdiff,
     vpatch,
+    xdelta1,
     zps,
 )
 
@@ -53,6 +54,7 @@ class Format(StrEnum):
     VPATCH = "vpatch"
     JOJODIFF = "jdf"
     DLDI = "dldi"
+    XDELTA1 = "xdelta1"
     XDELTA = "xdelta"
 
 
@@ -100,12 +102,13 @@ FAULTS = (
     vpatch.VpatchError,
     jojodiff.JojodiffError,
     dldi.DldiError,
+    xdelta1.Xdelta1Error,
     vcdiff.VcdiffError,
     imagesize.ImageSizeError,
 )
 KNOWN = (
     "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, PAT, "
-    "DPS, HDiffPatch, VPatch, JojoDiff, DLDI or xdelta"
+    "DPS, HDiffPatch, VPatch, JojoDiff, DLDI, xdelta 1 or xdelta"
 )
 MAGICS = (
     (ups.MAGIC, Format.UPS),
@@ -121,6 +124,7 @@ MAGICS = (
     (hdiff.PREFIX, Format.HDIFF),
     (vpatch.MAGIC, Format.VPATCH),
     (dldi.MAGIC, Format.DLDI),
+    *((prefix, Format.XDELTA1) for prefix in xdelta1.PREFIXES),
     (vcdiff.MAGIC, Format.XDELTA),
 )
 APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
@@ -143,6 +147,7 @@ APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
     Format.VPATCH: vpatch.apply,
     Format.JOJODIFF: jojodiff.apply,
     Format.DLDI: dldi.apply,
+    Format.XDELTA1: xdelta1.apply,
     Format.XDELTA: vcdiff.apply,
 }
 Builder = Callable[[bytes, bytes, str], bytes]
@@ -164,6 +169,7 @@ BUILDERS: dict[Format, Builder] = {
     Format.HDIFF: lambda before, after, _: hdiff.build(before, after),
     Format.VPATCH: lambda before, after, _: vpatch.build(before, after),
     Format.JOJODIFF: lambda before, after, _: jojodiff.build(before, after),
+    Format.XDELTA1: lambda before, after, _: xdelta1.build(before, after),
     Format.DPS: lambda before, after, text: dps.build(before, after, description=text),
     Format.APS_GBA: lambda before, after, _: apsgba.build(before, after),
     Format.PMSR: lambda before, after, _: pmsr.build(before, after),

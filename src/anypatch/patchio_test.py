@@ -136,7 +136,7 @@ class TestReading:
         assert str(raised.value) == (
             "notes.ips: not a patch in any format read here: "
             "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, "
-            "PAT, DPS, HDiffPatch, VPatch, JojoDiff, DLDI or xdelta"
+            "PAT, DPS, HDiffPatch, VPatch, JojoDiff, DLDI, xdelta 1 or xdelta"
         )
 
     @pytest.mark.parametrize(
@@ -155,6 +155,8 @@ class TestReading:
             (b"\xd6\xc3\xc4\x00", Format.XDELTA),
             (b"VPAT\x00\x00\x00\x80", Format.VPATCH),
             (b"\xed\xa5\x8d\xbf Chishm\x00\x01", Format.DLDI),
+            (b"%XDZ004%", Format.XDELTA1),
+            (b"%XDELTA%", Format.XDELTA1),
             (b"MZ stub VPAT\x00\x00\x00\x80\x08\x00\x00\x00", Format.VPATCH),
         ],
     )

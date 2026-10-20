@@ -161,6 +161,10 @@ OPEN_VCDIFF_CHECKSUMMED = (
 )
 NINJA1_TOOLS = ("ninja1", "ninja1-bz", "ninja1-text", "ninja1-tz")
 NINJA1_EMPTY = "NINJA 1.01 on PHP 8 fails on an empty file, where its fread of zero bytes throws"
+XDELTA1_EMPTY = (
+    "xdelta1 patch exits 2 without a message when the result is empty, "
+    "on the patch xdelta1 delta writes for that case as well"
+)
 NINJA1_SHRINK = "NINJA 1 cannot shrink a file, and NINJA 1.01 writes the patch anyway"
 NINJA1_LARGE = (
     "NINJA 1.01 writes a record 0x200 bytes before its change in a file over 30 MiB, "
@@ -168,6 +172,7 @@ NINJA1_LARGE = (
 )
 KNOWN: Mapping[tuple[str, Format, str, str], str] = {
     ("ninja1", Format.RUP1, OURS, "empty-to-data"): NINJA1_EMPTY,
+    ("xdelta1", Format.XDELTA1, OURS, "data-to-empty"): XDELTA1_EMPTY,
     **{
         (tool, Format.RUP1, THEIRS, case): reason
         for tool in NINJA1_TOOLS
@@ -341,6 +346,16 @@ def _hdiffpatch() -> list[Exchange]:
     ]
 
 
+def _xdelta1() -> list[Exchange]:
+    create = "xdelta1 delta -p %s {source} {target} {patch}; [ $? -le 1 ]"
+    apply = "xdelta1 patch {patch} {source} {out}"
+    return [
+        Exchange("xdelta1", Format.XDELTA1, create % "-0", apply),
+        Exchange("xdelta1-gzip", Format.XDELTA1, create % "-6", None),
+        Exchange("xdelta1-noverify", Format.XDELTA1, create % "-0 -n", None),
+    ]
+
+
 def _flips() -> list[Exchange]:
     create = "flips --create --exact --%s {source} {target} {patch}"
     apply = "flips --apply --exact {patch} {source} {out}"
@@ -407,6 +422,7 @@ def exchanges() -> list[Exchange]:
             "jdiff {source} {target} {patch}; [ $? -le 1 ]",
             "jpatch {source} {patch} {out}",
         ),
+        *_xdelta1(),
         Exchange(
             "javaxdelta",
             Format.GDIFF,
