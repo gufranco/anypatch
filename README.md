@@ -20,9 +20,6 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 
 ---
 
-> [!WARNING]
-> This project is experimental and in active development. Commands and the library API may change without notice, and more formats arrive over the next releases.
-
 anypatch is one library and one command line over the same code. Every capability is a typed Python function and a command, and the command only calls the function. The library needs nothing beyond the Python standard library; the command line adds Typer.
 
 ## Usage
