@@ -258,3 +258,149 @@ jobs:
               print(f"::error title=Tests in the wheel::{', '.join(shipped)}")
               sys.exit(1)
           CHECK
+
+  xdelta:
+    name: xdelta3 and anypatch read each other's patches
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install anypatch and the reference tool
+        run: |
+          python -m pip install --disable-pip-version-check ".[cli]"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xdelta3
+
+      - name: Patches cross between anypatch and xdelta3 in both directions
+        run: |
+          python - <<'CHECK'
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          source = bytes((at * 2654435761 >> 16) & 0xFF for at in range(300000))
+          target = bytearray(source)
+          target[1000:1010] = b"0123456789"
+          target[200000:200040] = bytes(40)
+          target = bytes(target) + b"appended tail" * 50
+          Path("source.bin").write_bytes(source)
+          Path("target.bin").write_bytes(target)
+
+          def run(*args):
+              done = subprocess.run(list(args), capture_output=True, text=True)
+              print(f"$ {' '.join(args)}\n{done.stdout}{done.stderr}")
+              if done.returncode != 0:
+                  print(f"::error title={args[0]} failed::{' '.join(args)}")
+                  sys.exit(1)
+
+          def same(path, who):
+              if Path(path).read_bytes() != target:
+                  print(f"::error title=Wrong output::{who}")
+                  sys.exit(1)
+
+          run("anypatch", "make", "source.bin", "target.bin", "-o", "ours.xdelta")
+          run("xdelta3", "-d", "-f", "-s", "source.bin", "ours.xdelta", "theirs-read.bin")
+          same("theirs-read.bin", "xdelta3 misread anypatch's patch")
+          for flags in (["-S", "none"], ["-S", "lzma"], ["-S", "djw9"], ["-S", "fgk"]):
+              run("xdelta3", "-e", "-f", *flags, "-s", "source.bin", "target.bin", "theirs.xdelta")
+              run("anypatch", "apply", "source.bin", "theirs.xdelta", "-o", "ours-read.bin")
+              same("ours-read.bin", f"anypatch misread an xdelta3 {flags} patch")
+          print("both tools read each other's patches")
+          CHECK
+        shell: bash
+
+  romjs:
+    name: RomPatcher.js, bsdiff and anypatch read each other's patches
+    runs-on: ubuntu-26.04
+    env:
+      ROMJS_COMMIT: 3183884086825c3a57c72026234debcef1e2240c
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install anypatch and the reference tools
+        run: |
+          python -m pip install --disable-pip-version-check ".[cli]"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bsdiff
+          git clone --quiet --filter=blob:none https://github.com/marcrobledo/RomPatcher.js.git "$RUNNER_TEMP/romjs"
+          git -C "$RUNNER_TEMP/romjs" checkout --quiet "$ROMJS_COMMIT"
+
+      - name: Write the RomPatcher.js harness
+        run: |
+          cat > "$RUNNER_TEMP/romjs.js" <<'HARNESS'
+          const fs = require('fs');
+          const RomPatcher = require(process.env.ROMJS + '/rom-patcher-js/RomPatcher.js');
+          const [cmd, a, b, c, d] = process.argv.slice(2);
+          const save = (file, path) => fs.writeFileSync(path, Buffer.from(file._u8array.subarray(0, file.fileSize)));
+          if (cmd === 'apply') {
+            const patch = RomPatcher.parsePatchFile(new BinFile(b));
+            if (!patch) { throw new Error('unknown patch'); }
+            save(RomPatcher.applyPatch(new BinFile(a), patch, { requireValidation: true }), c);
+          } else {
+            save(RomPatcher.createPatch(new BinFile(a), new BinFile(b), c).export(), d);
+          }
+          HARNESS
+
+      - name: Patches cross between anypatch and the references in both directions
+        env:
+          ROMJS: ${{ runner.temp }}/romjs
+          HARNESS: ${{ runner.temp }}/romjs.js
+        run: |
+          python - <<'CHECK'
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          body = bytes((at * 2654435761 >> 16) & 0xFF for at in range(200000))
+          source = b"\x80\x37\x12\x40" + body
+          target = bytearray(source)
+          target[1000:1010] = b"0123456789"
+          target[150000:150040] = bytes(40)
+          target = bytes(target) + b"appended tail" * 50
+          Path("source.bin").write_bytes(source)
+          Path("target.bin").write_bytes(target)
+
+          def run(*args):
+              done = subprocess.run(list(args), capture_output=True, text=True)
+              print(f"$ {' '.join(args)}\n{done.stdout}{done.stderr}")
+              if done.returncode != 0:
+                  print(f"::error title={args[0]} failed::{' '.join(args)}")
+                  sys.exit(1)
+
+          def same(path, who):
+              if Path(path).read_bytes() != target:
+                  print(f"::error title=Wrong output::{who}")
+                  sys.exit(1)
+
+          harness = os.environ["HARNESS"]
+          for kind in ("ips", "ebp", "ups", "bps", "ppf", "aps", "rup"):
+              run("anypatch", "make", "source.bin", "target.bin", "-o", f"ours.{kind}")
+              run("node", harness, "apply", "source.bin", f"ours.{kind}", f"theirs-read.{kind}")
+              same(f"theirs-read.{kind}", f"RomPatcher.js misread anypatch's {kind} patch")
+              run("node", harness, "create", "source.bin", "target.bin", kind, f"theirs.{kind}")
+              run("anypatch", "apply", "source.bin", f"theirs.{kind}", "-o", f"ours-read.{kind}")
+              same(f"ours-read.{kind}", f"anypatch misread a RomPatcher.js {kind} patch")
+          run("anypatch", "make", "source.bin", "target.bin", "-o", "ours.bdf")
+          run("bspatch", "source.bin", "bspatch-read.bin", "ours.bdf")
+          same("bspatch-read.bin", "bspatch misread anypatch's BDF patch")
+          run("node", harness, "apply", "source.bin", "ours.bdf", "romjs-read.bdf")
+          same("romjs-read.bdf", "RomPatcher.js misread anypatch's BDF patch")
+          run("bsdiff", "source.bin", "target.bin", "theirs.bdf")
+          run("anypatch", "apply", "source.bin", "theirs.bdf", "-o", "ours-read.bdf")
+          same("ours-read.bdf", "anypatch misread a bsdiff patch")
+          print("every tool reads every other tool's patches")
+          CHECK
+        shell: bash
