@@ -11,6 +11,7 @@ from anypatch.formats import (
     bdf,
     bps,
     bsdiff43,
+    dps,
     gdiff,
     imagesize,
     ipswrite,
@@ -18,6 +19,7 @@ from anypatch.formats import (
     pmsr,
     ppf,
     rup,
+    rup1,
     ups,
     vcdiff,
     zps,
@@ -36,11 +38,13 @@ class Format(StrEnum):
     BPS = "bps"
     PPF = "ppf"
     RUP = "rup"
+    RUP1 = "rup1"
     PMSR = "pmsr"
     BDF = "bdf"
     BSDIFF43 = "bsdiff43"
     GDIFF = "gdiff"
     PAT = "pat"
+    DPS = "dps"
     XDELTA = "xdelta"
 
 
@@ -59,6 +63,7 @@ SUFFIXES = {
     ".gdiff": Format.GDIFF,
     ".gdf": Format.GDIFF,
     ".pat": Format.PAT,
+    ".dps": Format.DPS,
     ".xdelta": Format.XDELTA,
     ".vcdiff": Format.XDELTA,
     ".xd3": Format.XDELTA,
@@ -73,20 +78,26 @@ FAULTS = (
     bps.BpsError,
     ppf.PpfError,
     rup.RupError,
+    rup1.Rup1Error,
     pmsr.PmsrError,
     bdf.BdfError,
     bsdiff43.Bsdiff43Error,
     gdiff.GdiffError,
     pat.PatError,
+    dps.DpsError,
     vcdiff.VcdiffError,
     imagesize.ImageSizeError,
 )
-KNOWN = "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, PMSR, BDF, BSDIFF43, GDIFF, PAT or xdelta"
+KNOWN = (
+    "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, PAT, "
+    "DPS or xdelta"
+)
 MAGICS = (
     (ups.MAGIC, Format.UPS),
     (bps.MAGIC, Format.BPS),
     (ppf.MAGIC, Format.PPF),
     (rup.MAGIC, Format.RUP),
+    (rup1.MAGIC, Format.RUP1),
     (pmsr.MAGIC, Format.PMSR),
     (pmsr.YAY0, Format.PMSR),
     (bdf.MAGIC, Format.BDF),
@@ -103,11 +114,13 @@ APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
     Format.BPS: bps.apply,
     Format.PPF: ppf.apply,
     Format.RUP: rup.apply,
+    Format.RUP1: rup1.apply,
     Format.PMSR: pmsr.apply,
     Format.BDF: bdf.apply,
     Format.BSDIFF43: bsdiff43.apply,
     Format.GDIFF: gdiff.apply,
     Format.PAT: pat.apply,
+    Format.DPS: dps.apply,
     Format.XDELTA: vcdiff.apply,
 }
 Builder = Callable[[bytes, bytes, str], bytes]
@@ -121,10 +134,12 @@ BUILDERS: dict[Format, Builder] = {
     Format.BPS: lambda before, after, text: bps.build(before, after, description=text),
     Format.PPF: lambda before, after, text: ppf.build(before, after, description=text),
     Format.RUP: lambda before, after, text: rup.build(before, after, description=text),
+    Format.RUP1: lambda before, after, _: rup1.build(before, after),
     Format.BDF: lambda before, after, _: bdf.build(before, after),
     Format.BSDIFF43: lambda before, after, _: bsdiff43.build(before, after),
     Format.GDIFF: lambda before, after, _: gdiff.build(before, after),
     Format.PAT: lambda before, after, _: pat.build(before, after),
+    Format.DPS: lambda before, after, text: dps.build(before, after, description=text),
     Format.APS_GBA: lambda before, after, _: apsgba.build(before, after),
     Format.PMSR: lambda before, after, _: pmsr.build(before, after),
     Format.XDELTA: lambda before, after, _: vcdiff.build(before, after),
@@ -153,6 +168,8 @@ def format_of(path: str | Path) -> Format:
 
 
 def identify(body: bytes, *, name: str) -> Format:
+    if SUFFIXES.get(Path(name).suffix.lower()) == Format.DPS:
+        return Format.DPS
     if SUFFIXES.get(Path(name).suffix.lower()) == Format.PAT and pat.matches(body):
         return Format.PAT
     if body.startswith(ipswrite.MAGIC32):

@@ -19,16 +19,19 @@ NAMES = {
     Format.BPS: ("BPS", "CRC32 of the source and of the result"),
     Format.PPF: ("PPF", "PPF 2.0 source size and block check; PPF 3.0 block check and undo data"),
     Format.RUP: ("RUP", "MD5 of the source and of the result, per file entry"),
+    Format.RUP1: ("NINJA 1", "CRC32, MD5 and SHA-1 of the source, each skippable"),
     Format.PMSR: ("PMSR", "Paper Mario USA 1.0, by size and CRC32"),
     Format.BDF: ("BDF", NOTHING),
     Format.BSDIFF43: ("BSDIFF43, ENDSLEY", NOTHING),
     Format.GDIFF: ("GDIFF", NOTHING),
+    Format.DPS: ("DPS", "the source size"),
     Format.PAT: ("PAT, FireFlower", "the original value of every byte it changes"),
     Format.XDELTA: ("xdelta", "an Adler-32 checksum of every window, when present"),
 }
 EXTRA_EXTENSIONS = {
     Format.APS_GBA: (".aps",),
     Format.BSDIFF43: (".bsdiff",),
+    Format.RUP1: (".rup",),
     Format.PMSR: (".mod", ".pmsr"),
 }
 

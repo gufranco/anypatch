@@ -81,11 +81,13 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | BPS | yes | yes | `.bps` | CRC32 of the source and of the result |
 | PPF 1.0, 2.0, 3.0 | yes | as 3.0 with undo data | `.ppf` | PPF 2.0 source size and block check; PPF 3.0 block check and undo data |
 | RUP, NINJA 2.0 | yes | yes | `.rup` | MD5 of the source and of the result, per file entry, taken after NINJA's conversion for the entry's ROM type: headers off, layouts undone |
+| NINJA 1 | yes, binary and text, plain or zlib | binary, with `--format rup1` | `.rup` | CRC32, MD5 and SHA-1 of the source, each skippable, after NINJA 1's conversion for SNES, Mega Drive and Game Boy |
 | PMSR | yes | yes, with `--format pmsr` | `.mod`, `.pmsr` | Paper Mario USA 1.0, by size and CRC32; read plain or inside Yay0, written plain |
 | BDF, bsdiff 4 | yes | yes | `.bdf`, `.bsdiff` | Nothing |
 | BSDIFF43, ENDSLEY | yes | yes, with `--format bsdiff43` | `.bsdiff` | Nothing |
 | GDIFF | yes | yes | `.gdiff`, `.gdf` | Nothing |
 | PAT, FireFlower | yes, also `fc /b` output | yes, when the size stays the same | `.pat` | The original value of every byte it changes |
+| DPS | yes, by the `.dps` extension, since the format has no magic | yes | `.dps` | The source size |
 | xdelta, VCDIFF | yes | yes | `.xdelta`, `.vcdiff`, `.xd3`, `.delta` | An Adler-32 checksum of every window, when present. Reads xdelta3 output with no secondary compression, LZMA, DJW or FGK, open-vcdiff's interleaved and checksummed S version, and application code tables in the RFC 3284 and open-vcdiff layouts |
 
 The contents decide the format; only an IPS body named `.zps` or `.ip1` is read as ZPS. Every patch is applied to the clean source on its own, and the bytes each one changes are compared. Two patches that write different values to one byte are refused, with every range and both values listed; identical writes merge. A patch whose format carries a source checksum is refused on any other file, naming both values, and when the source already holds the result it is reported as already applied. A patch that claims a result larger than both 1 GiB and its source is refused before anything is allocated.

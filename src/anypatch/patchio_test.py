@@ -135,8 +135,8 @@ class TestReading:
         # Assert
         assert str(raised.value) == (
             "notes.ips: not a patch in any format read here: "
-            "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, PMSR, BDF, BSDIFF43, GDIFF, "
-            "PAT or xdelta"
+            "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, "
+            "PAT, DPS or xdelta"
         )
 
     @pytest.mark.parametrize(

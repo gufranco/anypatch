@@ -231,11 +231,14 @@ PAT_RESIZED = (
     "pmsr-base-grow",
 )
 PAT_SIZE = "cannot change a file's size"
+RUP1_SHRINKS = ("data-to-empty", "shrink-by-one", "ips-shrink-to-limit", "ips-shrink-below-limit")
 
 
 def refused(name: str, kind: Format) -> str:
     if kind is Format.PAT and name in PAT_RESIZED:
         return PAT_SIZE
+    if kind is Format.RUP1 and name in RUP1_SHRINKS:
+        return SHRINK
     if kind is Format.PMSR and name not in STAR_ROD:
         return PAPER_MARIO
     return REFUSED.get((name, kind), "")
