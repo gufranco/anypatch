@@ -4,6 +4,7 @@ from typer.testing import CliRunner
 
 from anypatch import doctor
 from anypatch.cli.main import app, doctor_lines, exit_code
+from anypatch.patchio import Format
 from anypatch.version import VERSION
 
 RUNNER = CliRunner()
@@ -41,6 +42,7 @@ class TestDoctor:
             "zlib",
             "bz2",
             "lzma",
+            *(kind.value for kind in Format),
         ]
 
     def test_json_carries_the_verdict_and_every_check(self):

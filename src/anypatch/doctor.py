@@ -12,6 +12,7 @@ from anypatch.version import VERSION
 MIN_PYTHON = (3, 11)
 CODECS = ("zlib", "bz2", "lzma")
 NO_VERDICT = "nothing was checked, so there is no verdict to give"
+FORMATS_SKIPPED = "not checked, because a codec is missing"
 
 Importer = Callable[[str], object]
 
@@ -54,9 +55,17 @@ def _codec(name: str, importer: Importer) -> Check:
     try:
         importer(name)
     except ModuleNotFoundError:
-        detail = f"this Python was built without {name}, so formats that use it are not read"
-        return Check(name, CheckStatus.MISSING, detail)
+        detail = f"this Python was built without {name}, which anypatch needs"
+        return Check(name, CheckStatus.FAILED, detail)
     return Check(name, CheckStatus.OK, "available")
+
+
+def _formats(codecs: tuple[Check, ...]) -> tuple[Check, ...]:
+    if any(check.status is not CheckStatus.OK for check in codecs):
+        return (Check("formats", CheckStatus.MISSING, FORMATS_SKIPPED),)
+    selftest = importlib.import_module("anypatch.selftest")
+    checks: tuple[Check, ...] = selftest.run()
+    return checks
 
 
 def diagnose(
@@ -66,11 +75,13 @@ def diagnose(
 ) -> DoctorReport:
     running = python if python is not None else sys.version_info[:3]
     host = f"{platform.system()} {platform.machine()}"
+    codecs = tuple(_codec(name, importer) for name in CODECS)
     return DoctorReport(
         (
             Check("anypatch", CheckStatus.OK, VERSION),
             _python(running),
             Check("platform", CheckStatus.OK, host),
-            *(_codec(name, importer) for name in CODECS),
+            *codecs,
+            *_formats(codecs),
         )
     )
