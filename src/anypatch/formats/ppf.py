@@ -49,6 +49,8 @@ def _records(before: bytes, after: bytes) -> list[Record]:
         for start, data in spans
         for at in range(0, len(data), MAX_RECORD)
     ]
+    if not pieces and after:
+        pieces = [(0, after[:1])]
     return [Record(at, data, padded[at : at + len(data)]) for at, data in pieces]
 
 
@@ -130,8 +132,9 @@ def _checked(source: bytes, patch: bytes, layout: Layout) -> None:
         )
     if layout.block_at is None:
         return
+    held = source[layout.block_at : layout.block_at + BLOCK_LENGTH]
     start = layout.at - BLOCK_LENGTH
-    if source[layout.block_at : layout.block_at + BLOCK_LENGTH] != patch[start : layout.at]:
+    if held != patch[start : start + len(held)]:
         raise PpfError(f"the block check at 0x{layout.block_at:X} does not match this image")
 
 

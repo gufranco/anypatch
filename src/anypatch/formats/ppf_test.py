@@ -213,3 +213,64 @@ class TestTheSizeCeiling:
 
         # Assert
         assert "ceiling" in str(raised.value)
+
+
+class TestABlockCheckPastTheEndOfTheDump:
+    def test_only_the_bytes_the_dump_holds_are_compared(self):
+        # Arrange
+        dump = SOURCE[: 0x9320 + 10]
+        block = SOURCE[0x9320 : 0x9320 + 10] + bytes([0x5A]) * 1014
+        patch = ppf3(struct.pack("<QB", 0, 1) + b"Q", block=block)
+
+        # Act
+        result = ppf.apply(dump, patch)
+
+        # Assert
+        assert result == b"Q" + dump[1:]
+
+    def test_a_dump_shorter_than_the_block_offset_is_not_checked(self):
+        # Arrange
+        dump = SOURCE[:16]
+        patch = ppf3(struct.pack("<QB", 0, 1) + b"Q", block=bytes([0xEE]) * 1024)
+
+        # Act
+        result = ppf.apply(dump, patch)
+
+        # Assert
+        assert result == b"Q" + dump[1:]
+
+    def test_the_bytes_the_dump_holds_must_still_match(self):
+        # Arrange
+        dump = SOURCE[: 0x9320 + 10]
+        block = bytes(1024)
+        patch = ppf3(struct.pack("<QB", 0, 1) + b"Q", block=block)
+
+        # Act
+        with pytest.raises(ppf.PpfError) as raised:
+            ppf.apply(dump, patch)
+
+        # Assert
+        assert "the block check at 0x9320 does not match" in str(raised.value)
+
+
+class TestIdenticalFiles:
+    def test_one_record_rewrites_the_first_byte_so_every_patcher_can_read_it(self):
+        # Arrange
+        before = b"same bytes"
+
+        # Act
+        patch = ppf.build(before, before)
+
+        # Assert
+        assert patch[ppf.RECORDS_AT + 4 :] == struct.pack("<QB", 0, 1) + b"s" + b"s"
+        assert ppf.apply(before, patch) == before
+
+    def test_two_empty_files_give_a_patch_with_no_records(self):
+        # Arrange
+        before = b""
+
+        # Act
+        patch = ppf.build(before, before)
+
+        # Assert
+        assert len(patch) == ppf.RECORDS_AT + 4
