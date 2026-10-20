@@ -117,6 +117,29 @@ class TestWhatThePatchReplays:
         assert apswrite.apply(before, patch) == bytes(after)
         assert len(patch) < apswrite.RECORDS_OFFSET + 0x40
 
+    def test_a_run_record_stores_the_value_before_the_count(self):
+        # Arrange
+        before = rom()
+        after = bytearray(before)
+        after[0x80:0xC0] = b"\xa5" * 0x40
+
+        # Act
+        patch = apswrite.build(before, bytes(after))
+
+        # Assert
+        assert patch[apswrite.RECORDS_OFFSET :] == struct.pack("<IBBB", 0x80, 0, 0xA5, 0x40)
+
+    def test_a_community_run_record_writes_its_value_count_times(self):
+        # Arrange
+        before = rom()
+        patch = apswrite.build(before, before) + struct.pack("<IB", 0x80, 0) + b"\x20\x04"
+
+        # Act
+        replayed = apswrite.apply(before, patch)
+
+        # Assert
+        assert replayed == before[:0x80] + b"    " + before[0x84:]
+
     def test_a_run_longer_than_one_record_is_split_and_still_replays(self):
         # Arrange
         before = rom(size=0x600)

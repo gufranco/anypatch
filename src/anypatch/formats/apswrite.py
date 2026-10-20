@@ -63,7 +63,7 @@ def _records(offset: int, chunk: bytes) -> bytes:
     while at < len(chunk):
         run = _run_length(chunk, at)
         if run >= MIN_RUN:
-            out += struct.pack("<IBBB", offset + at, RUN_MARKER, run, chunk[at])
+            out += struct.pack("<IBBB", offset + at, RUN_MARKER, chunk[at], run)
             at += run
             continue
         take = min(MAX_RECORD, len(chunk) - at)
@@ -142,7 +142,7 @@ def _record(patch: bytes, at: int, size: int) -> tuple[int, bytes, int]:
     if length == RUN_MARKER:
         if data_at + RUN_TAIL > len(patch):
             raise ApsError(f"the patch ends inside the run record at byte {at}")
-        data, end = bytes([patch[data_at + 1]]) * patch[data_at], data_at + RUN_TAIL
+        data, end = bytes([patch[data_at]]) * patch[data_at + 1], data_at + RUN_TAIL
     elif data_at + length > len(patch):
         raise ApsError(f"the patch ends inside the {length}-byte record at byte {at}")
     else:
