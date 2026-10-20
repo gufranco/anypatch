@@ -88,7 +88,7 @@ def _layout(patch: bytes) -> Layout:
     if len(patch) < RECORDS_AT + 4:
         raise PpfError("the patch ends inside its header")
     kind, blocked, undo = patch[RECORDS_AT : RECORDS_AT + 3]
-    block_at = BLOCK_AT.get(kind, BLOCK_AT[0]) if blocked else None
+    block_at = (BLOCK_AT[1] if kind else BLOCK_AT[0]) if blocked else None
     end = RECORDS_AT + 4 + (BLOCK_LENGTH if blocked else 0)
     if end > len(patch):
         raise PpfError("the patch ends inside its header")

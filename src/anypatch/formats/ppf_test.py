@@ -139,10 +139,11 @@ class TestApplying:
         # Assert
         assert str(raised.value) == "made for a 38,913-byte image, but this one is 38,912 bytes"
 
-    def test_a_version_three_gi_block_check_is_read_at_its_own_offset(self):
+    @pytest.mark.parametrize("kind", [1, 2, 0xFF])
+    def test_a_version_three_gi_block_check_is_read_at_its_own_offset(self, kind):
         # Arrange
         block = SOURCE[0x80A0 : 0x80A0 + 1024]
-        patch = ppf3(struct.pack("<QB", 0, 1) + b"Q", block=block, kind=1)
+        patch = ppf3(struct.pack("<QB", 0, 1) + b"Q", block=block, kind=kind)
 
         # Act
         replayed = ppf.apply(SOURCE, patch)
