@@ -30,6 +30,13 @@ class TestFormats:
             ("a.zps", Format.ZPS),
             ("a.ip1", Format.ZPS),
             ("a.aps", Format.APS),
+            ("a.ebp", Format.EBP),
+            ("a.ups", Format.UPS),
+            ("a.bps", Format.BPS),
+            ("a.ppf", Format.PPF),
+            ("a.rup", Format.RUP),
+            ("a.bdf", Format.BDF),
+            ("a.bsdiff", Format.BDF),
             ("a.xdelta", Format.XDELTA),
             ("a.vcdiff", Format.XDELTA),
             ("a.xd3", Format.XDELTA),
@@ -48,7 +55,7 @@ class TestFormats:
 
     def test_an_unknown_extension_is_refused_with_the_known_ones(self):
         # Arrange
-        path = "a.bps"
+        path = "a.txt"
 
         # Act
         with pytest.raises(patchio.PatchError) as raised:
@@ -59,8 +66,8 @@ class TestFormats:
 
 
 class TestRoundTrips:
-    @pytest.mark.parametrize("kind", list(Format))
-    def test_every_format_turns_the_source_into_the_target(self, kind, tmp_path):
+    @pytest.mark.parametrize("kind", patchio.WRITABLE)
+    def test_every_writable_format_turns_the_source_into_the_target(self, kind, tmp_path):
         # Arrange
         before = image()
         after = changed(before, 0x200, b"\xde\xad\xbe\xef") + b"tail"
@@ -123,7 +130,37 @@ class TestReading:
             patchio.read(path)
 
         # Assert
-        assert "not an IPS, ZPS, APS or xdelta patch" in str(raised.value)
+        assert str(raised.value) == (
+            "notes.ips: not a patch in any format read here: "
+            "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, PMSR, BDF or xdelta"
+        )
+
+    @pytest.mark.parametrize(
+        ("body", "expected"),
+        [
+            (b"IPS32EEOF", Format.IPS),
+            (b"APS1" + bytes(8 + 0x10008), Format.APS_GBA),
+            (b"APS10" + bytes(8), Format.APS),
+            (b"UPS1", Format.UPS),
+            (b"BPS1", Format.BPS),
+            (b"PPF30", Format.PPF),
+            (b"NINJA2", Format.RUP),
+            (b"PMSR", Format.PMSR),
+            (b"Yay0", Format.PMSR),
+            (b"BSDIFF40", Format.BDF),
+            (b"\xd6\xc3\xc4\x00", Format.XDELTA),
+        ],
+    )
+    def test_each_format_is_recognised_by_its_contents(self, body, expected, tmp_path):
+        # Arrange
+        path = tmp_path / "some.patch"
+        path.write_bytes(body)
+
+        # Act
+        patch = patchio.read(path)
+
+        # Assert
+        assert patch.format == expected
 
     def test_a_file_it_cannot_read_is_refused(self, tmp_path):
         # Arrange
@@ -209,7 +246,43 @@ class TestWriting:
 
         # Act
         with pytest.raises(patchio.PatchError) as raised:
-            patchio.encode(Format.IPS, before, after)
+            patchio.encode(Format.ZPS, before, after)
 
         # Assert
-        assert str(raised.value).startswith("ips: ") and "use APS or xdelta" in str(raised.value)
+        assert str(raised.value) == (
+            "zps: ZPS is IPS, so it cannot reach past 16 MiB; use IPS32, APS or xdelta"
+        )
+
+    def test_an_ips_past_sixteen_mebibytes_comes_out_as_ips32(self):
+        # Arrange
+        before = bytes(0x1000010)
+        after = before[:-1] + b"\x01"
+
+        # Act
+        files = patchio.encode(Format.IPS, before, after)
+
+        # Assert
+        assert files == {".ips": b"IPS32" + bytes([1, 0, 0, 0x0F, 0, 1, 1]) + b"EEOF"}
+
+    @pytest.mark.parametrize("kind", [Format.APS_GBA, Format.PMSR])
+    def test_a_format_that_is_only_read_is_never_written(self, kind):
+        # Arrange
+        before = image()
+
+        # Act
+        with pytest.raises(patchio.PatchError) as raised:
+            patchio.encode(kind, before, before)
+
+        # Assert
+        assert str(raised.value) == f"{kind.value}: this format is read here, never written"
+
+    def test_an_ebp_carries_the_description_as_metadata(self):
+        # Arrange
+        before = image()
+        after = changed(before, 0x200, b"\x01")
+
+        # Act
+        files = patchio.encode(Format.EBP, before, after, description="hi")
+
+        # Assert
+        assert files[".ebp"].endswith(b'EOF{"patcher": "EBPatcher", "description": "hi"}')

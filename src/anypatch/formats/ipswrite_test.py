@@ -2,7 +2,7 @@ import struct
 
 import pytest
 
-from n64_save_patches import ipswrite
+from n64_save_patches import imagesize, ipswrite
 
 KNUTH = 2654435761
 
@@ -140,17 +140,53 @@ class TestWhatThePatchReplays:
 
 
 class TestTheOffsetsIpsCannotWrite:
-    def test_a_change_at_or_past_sixteen_mebibytes_is_refused(self):
+    def test_a_change_at_or_past_sixteen_mebibytes_is_written_as_ips32(self):
         # Arrange
         before = bytes(ipswrite.LIMIT + 0x10)
         after = changed(before, ipswrite.LIMIT + 4, b"\x01")
 
         # Act
-        with pytest.raises(ipswrite.IpsError) as raised:
-            ipswrite.build(before, after)
+        patch = ipswrite.build(before, after)
 
         # Assert
-        assert "APS" in str(raised.value)
+        assert patch == b"IPS32" + bytes([1, 0, 0, 4, 0, 1, 1]) + b"EEOF"
+        assert ipswrite.apply(before, patch) == after
+
+    def test_classic_ips_refuses_an_image_its_offsets_cannot_reach(self):
+        # Arrange
+        before = bytes(ipswrite.LIMIT + 1)
+
+        # Act
+        with pytest.raises(ipswrite.IpsError) as raised:
+            ipswrite.build_variant(ipswrite.IPS, before, before)
+
+        # Assert
+        assert "IPS offsets cannot reach" in str(raised.value)
+
+    def test_an_ips32_record_at_the_eeof_offset_starts_one_byte_earlier(self):
+        # Arrange
+        at = ipswrite.IPS32.end_as_offset
+        before = bytes(at + 8)
+        after = changed(before, at, b"\x05")
+
+        # Act
+        patch = ipswrite.build_variant(ipswrite.IPS32, before, after)
+
+        # Assert
+        assert patch[5:9] == (at - 1).to_bytes(4, "big")
+        assert ipswrite.apply(before, patch) == after
+
+    def test_an_ips32_patch_shrinks_with_a_four_byte_size(self):
+        # Arrange
+        before = image(0x100)
+        after = before[:0x80]
+
+        # Act
+        patch = ipswrite.build_variant(ipswrite.IPS32, before, after)
+
+        # Assert
+        assert patch == b"IPS32EEOF" + bytes([0, 0, 0, 0x80])
+        assert ipswrite.apply(before, patch) == after
 
     def test_a_literal_starting_at_the_eof_offset_starts_one_byte_earlier(self):
         # Arrange
@@ -196,6 +232,9 @@ class TestReadingAPatch:
             (b"PATCH\x00\x00\x10\x00\x04ab", "ends inside the 4-byte record"),
             (b"PATCH\x00\x00\x10\x00\x00\x00", "ends inside the run record"),
             (b"PATCHEOFxx", "2 bytes follow EOF"),
+            (b"PATCHEOF{oops", "not JSON"),
+            (b"PATCHEOF{}xx", "not JSON"),
+            (b"IPS32EEOFxx", "2 bytes follow EEOF"),
         ],
     )
     def test_a_damaged_patch_is_refused_with_where_it_broke(self, patch, message):
@@ -219,3 +258,69 @@ class TestReadingAPatch:
 
         # Assert
         assert after == b"\x11" * 4 + bytes(4) + b"\xaa\xbb"
+
+
+class TestEbp:
+    def test_metadata_after_eof_is_written_and_read_back(self):
+        # Arrange
+        before = image()
+        after = changed(before, 0x40, b"\x01")
+
+        # Act
+        patch = ipswrite.build_ebp(before, after, {"title": "Mother 2 fix"})
+
+        # Assert
+        assert ipswrite.apply(before, patch) == after
+        assert ipswrite.metadata(patch) == {"patcher": "EBPatcher", "title": "Mother 2 fix"}
+
+    def test_a_plain_ips_has_no_metadata(self):
+        # Arrange
+        before = image()
+
+        # Act
+        found = ipswrite.metadata(ipswrite.build(before, before))
+
+        # Assert
+        assert found is None
+
+    def test_bytes_after_eof_that_are_neither_a_size_nor_json_are_refused(self):
+        # Arrange
+        patch = b"PATCHEOF[1, 2]"
+
+        # Act
+        with pytest.raises(ipswrite.IpsError) as raised:
+            ipswrite.apply(image(), patch)
+
+        # Assert
+        assert "neither a size nor EBP metadata" in str(raised.value)
+
+    @pytest.mark.parametrize(
+        ("before", "after", "message"),
+        [
+            (bytes(0x100), bytes(0x80), "cannot shrink"),
+            (bytes(ipswrite.LIMIT + 4), bytes(ipswrite.LIMIT) + b"\x01" * 4, "past 16 MiB"),
+        ],
+    )
+    def test_ebp_refuses_what_its_ips_body_cannot_hold(self, before, after, message):
+        # Arrange
+        metadata = {"title": "x"}
+
+        # Act
+        with pytest.raises(ipswrite.IpsError) as raised:
+            ipswrite.build_ebp(before, after, metadata)
+
+        # Assert
+        assert message in str(raised.value)
+
+
+class TestTheSizeCeiling:
+    def test_a_patch_claiming_a_huge_result_is_refused_before_allocating(self):
+        # Arrange
+        patch = b"IPS32" + (0x50000000).to_bytes(4, "big") + b"\x00\x01x" + b"EEOF"
+
+        # Act
+        with pytest.raises(imagesize.ImageSizeError) as raised:
+            ipswrite.apply(b"ABCD", patch)
+
+        # Assert
+        assert "ceiling" in str(raised.value)

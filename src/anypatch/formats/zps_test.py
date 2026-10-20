@@ -82,3 +82,17 @@ class TestApplying:
 
         # Assert
         assert "64 bytes" in str(raised.value)
+
+
+class TestLimits:
+    def test_a_change_past_sixteen_mebibytes_is_refused_because_zps_is_classic_ips(self):
+        # Arrange
+        before = bytes(0x1000010)
+        after = before[:-1] + b"\x01"
+
+        # Act
+        with pytest.raises(zps.ZpsError) as raised:
+            zps.build(before, after)
+
+        # Assert
+        assert "use IPS32, APS or xdelta" in str(raised.value)

@@ -18,7 +18,9 @@ def _pair(image: bytes) -> str:
 
 
 def build(before: bytes, after: bytes) -> tuple[bytes, bytes]:
-    return ipswrite.build(before, after), before[:HEADER_SIZE]
+    if not ipswrite.fits(before, after):
+        raise ZpsError("ZPS is IPS, so it cannot reach past 16 MiB; use IPS32, APS or xdelta")
+    return ipswrite.build_variant(ipswrite.IPS, before, after), before[:HEADER_SIZE]
 
 
 def check(before: bytes, header: bytes) -> None:
