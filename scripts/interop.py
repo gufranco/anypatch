@@ -15,6 +15,7 @@ from anypatch import boundaries_test_support as boundaries
 from anypatch.patchio import Format, PatchError
 
 TIMEOUT = 300
+OPEN_VCDIFF_TIMEOUT = 120
 LOG_TAIL = 2000
 REPORT_WIDTH = 600
 OURS = "ours"
@@ -31,6 +32,7 @@ class Exchange:
     kind: Format
     make: str | None
     apply: str | None
+    timeout: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,7 +108,85 @@ PPF_RESIZED = (
     "varint-0x7f",
     "varint-0x80",
 )
+OPEN_VCDIFF_ADLER = (
+    "open-vcdiff reads strict RFC 3284, not the per-window Adler-32 xdelta3 writes by default; "
+    "anypatch writes that checksum the same way, and open-vcdiff rejects xdelta3's patch too"
+)
+OPEN_VCDIFF_EMPTY = "open-vcdiff encode never finishes when the target is empty"
+OPEN_VCDIFF_CHECKSUMMED = (
+    "identical",
+    "empty-to-data",
+    "first-byte",
+    "last-byte",
+    "grow-by-one",
+    "shrink-by-one",
+    "scattered",
+    "long-run",
+    "long-literal",
+    "varint-0x7f",
+    "varint-0x80",
+    "varint-0x3fff",
+    "varint-0x4000",
+    "ips-eof-offset",
+    "ips-run-at-eof-offset",
+    "ips-last-offset",
+    "ips-grow-to-limit",
+    "ips-past-limit-low-change",
+    "ips-past-limit-high-change",
+    "ips-shrink-to-limit",
+    "ips-shrink-below-limit",
+    "aps-record-255",
+    "aps-record-256",
+    "gba-block-edge",
+    "gba-partial-block",
+    "ips-record-65535",
+    "ips-record-65536",
+    "gdiff-data-246",
+    "gdiff-data-247",
+    "gdiff-data-65535",
+    "gdiff-data-65536",
+    "gdiff-copy-255",
+    "gdiff-copy-256",
+    "gdiff-copy-65535",
+    "gdiff-copy-65536",
+    "gdiff-copy-past-ushort",
+    "xdelta-window-0x7fffff",
+    "xdelta-window-0x800000",
+    "xdelta-window-0x800001",
+    "xdelta-window-0x1000001",
+    "pmsr-base-edit",
+    "pmsr-base-grow",
+)
+NINJA1_TOOLS = ("ninja1", "ninja1-bz", "ninja1-text", "ninja1-tz")
+NINJA1_EMPTY = "NINJA 1.01 on PHP 8 fails on an empty file, where its fread of zero bytes throws"
+NINJA1_SHRINK = "NINJA 1 cannot shrink a file, and NINJA 1.01 writes the patch anyway"
+NINJA1_LARGE = (
+    "NINJA 1.01 writes a record 0x200 bytes before its change in a file over 30 MiB, "
+    "such as 0x27FFDF8 for a change at 0x27FFFF8"
+)
 KNOWN: Mapping[tuple[str, Format, str, str], str] = {
+    ("ninja1", Format.RUP1, OURS, "empty-to-data"): NINJA1_EMPTY,
+    **{
+        (tool, Format.RUP1, THEIRS, case): reason
+        for tool in NINJA1_TOOLS
+        for case, reason in (
+            ("empty-to-data", NINJA1_EMPTY),
+            ("data-to-empty", NINJA1_EMPTY),
+            ("shrink-by-one", NINJA1_SHRINK),
+            ("ips-shrink-to-limit", NINJA1_SHRINK),
+            ("ips-shrink-below-limit", NINJA1_SHRINK),
+            ("pmsr-base-edit", NINJA1_LARGE),
+            ("pmsr-base-grow", NINJA1_LARGE),
+        )
+    },
+    **{
+        ("open-vcdiff", Format.XDELTA, OURS, case): OPEN_VCDIFF_ADLER
+        for case in OPEN_VCDIFF_CHECKSUMMED
+    },
+    **{
+        (tool, Format.XDELTA, THEIRS, "data-to-empty"): OPEN_VCDIFF_EMPTY
+        for tool in ("open-vcdiff", "open-vcdiff-sdch", "open-vcdiff-matches")
+    },
     **{("flips", Format.IPS, OURS, case): FLIPS_IPS32 for case in IPS32_CASES},
     **{
         ("flips", Format.IPS, THEIRS, case): FLIPS_IPS_BIG
@@ -215,6 +295,39 @@ def _xdelta() -> list[Exchange]:
     return [reader, *writers]
 
 
+def _open_vcdiff() -> list[Exchange]:
+    create = "vcdiff encode -dictionary {source} -target {target} -delta {patch}"
+    apply = "vcdiff decode -dictionary {source} -delta {patch} -target {out}"
+    return [
+        Exchange("open-vcdiff", Format.XDELTA, create, apply, OPEN_VCDIFF_TIMEOUT),
+        Exchange(
+            "open-vcdiff-sdch",
+            Format.XDELTA,
+            f"{create} -interleaved -checksum",
+            None,
+            OPEN_VCDIFF_TIMEOUT,
+        ),
+        Exchange(
+            "open-vcdiff-matches",
+            Format.XDELTA,
+            f"{create} -target_matches",
+            None,
+            OPEN_VCDIFF_TIMEOUT,
+        ),
+    ]
+
+
+def _ninja1() -> list[Exchange]:
+    create = "$NINJA1 -%s raw {source} {target} {patch}"
+    apply = "cp {source} {out} && printf 'n\\n' | $NINJA1 -p {patch} {out}"
+    return [
+        Exchange("ninja1", Format.RUP1, create % "b", apply),
+        Exchange("ninja1-bz", Format.RUP1, create % "bz", None),
+        Exchange("ninja1-text", Format.RUP1, create % "t", None),
+        Exchange("ninja1-tz", Format.RUP1, create % "tz", None),
+    ]
+
+
 def _flips() -> list[Exchange]:
     create = "flips --create --exact --%s {source} {target} {patch}"
     apply = "flips --apply --exact {patch} {source} {out}"
@@ -244,7 +357,9 @@ def exchanges() -> list[Exchange]:
             "bsdiff {source} {target} {patch}",
             "bspatch {source} {out} {patch}",
         ),
+        *_open_vcdiff(),
         *_flips(),
+        *_ninja1(),
         *_ppf(),
         Exchange(
             "ninja",
@@ -280,7 +395,8 @@ def _tail(log: Path) -> str:
     return data[-LOG_TAIL:].decode("utf-8", errors="replace")
 
 
-def _run(template: str, paths: dict[str, Path]) -> str:
+def _run(template: str, paths: dict[str, Path], timeout: int | None = None) -> str:
+    limit = timeout or TIMEOUT
     quoted = {name: shlex.quote(str(path)) for name, path in paths.items()}
     command = os.path.expandvars(template.format(**quoted))
     log = paths["out"].with_name("tool.log")
@@ -292,11 +408,11 @@ def _run(template: str, paths: dict[str, Path]) -> str:
                 stdin=subprocess.DEVNULL,
                 stdout=sink,
                 stderr=subprocess.STDOUT,
-                timeout=TIMEOUT,
+                timeout=limit,
                 check=False,
             )
         except subprocess.TimeoutExpired:
-            return f"timed out after {TIMEOUT} s: {command} {_tail(log)}"
+            return f"timed out after {limit} s: {command} {_tail(log)}".strip()
     if done.returncode != 0:
         return f"exit {done.returncode}: {command} {_tail(log)}".strip()
     return ""
@@ -305,7 +421,7 @@ def _run(template: str, paths: dict[str, Path]) -> str:
 def _ours_read_by_them(case: boundaries.Boundary, one: Exchange, paths: dict[str, Path]) -> str:
     files = api.make(case.source, case.target, one.kind)
     paths["patch"].write_bytes(files[f".{one.kind.value}"])
-    failed = _run(one.apply or "", paths)
+    failed = _run(one.apply or "", paths, one.timeout)
     if failed:
         return failed
     made = paths["out"].read_bytes() if paths["out"].exists() else b""
@@ -313,7 +429,7 @@ def _ours_read_by_them(case: boundaries.Boundary, one: Exchange, paths: dict[str
 
 
 def _theirs_read_by_us(case: boundaries.Boundary, one: Exchange, paths: dict[str, Path]) -> str:
-    failed = _run(one.make or "", paths)
+    failed = _run(one.make or "", paths, one.timeout)
     if failed:
         return failed
     if not paths["patch"].exists():

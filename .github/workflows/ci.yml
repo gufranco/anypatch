@@ -429,6 +429,66 @@ jobs:
             -d auto_prepend_file=${{ runner.temp }}/ninja/shim.php ${{ runner.temp }}/ninja/ninja2-run.php
         run: python scripts/interop.py --tool ninja --work "$RUNNER_TEMP/interop"
 
+  open-vcdiff:
+    name: open-vcdiff and anypatch exchange every boundary patch
+    runs-on: ubuntu-26.04
+    env:
+      OPEN_VCDIFF_COMMIT: 868f459a8d815125c2457f8c74b12493853100f9
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Build the reference tool
+        run: |
+          git clone --quiet https://github.com/google/open-vcdiff.git "$RUNNER_TEMP/ovc"
+          git -C "$RUNNER_TEMP/ovc" checkout --quiet "$OPEN_VCDIFF_COMMIT"
+          git -C "$RUNNER_TEMP/ovc" submodule update --quiet --init
+          cmake -S "$RUNNER_TEMP/ovc" -B "$RUNNER_TEMP/ovc-build" -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -Dvcdiff_build_tests=OFF
+          cmake --build "$RUNNER_TEMP/ovc-build" --target vcdiff -j 4
+          echo "$RUNNER_TEMP/ovc-build" >> "$GITHUB_PATH"
+
+      - name: Exchange the boundary files in both directions
+        env:
+          PYTHONPATH: src
+        run: python scripts/interop.py --tool open-vcdiff --work "$RUNNER_TEMP/interop"
+
+  ninja1:
+    name: NINJA 1.01 and anypatch exchange every boundary patch
+    runs-on: ubuntu-26.04
+    env:
+      NINJA1_SHA256: ad96df73d469df0846c8960d27a1442a6473c31686b52e21b0123dafab37c95e
+      NINJA_ARCHIVE: https://web.archive.org/web/20070102143121id_
+      NINJA_FILE: http://ninja.cinnamonpirate.com:80/files/ninja-1.01php.tar.gz
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install the reference tool
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq php-cli
+          curl -sfL -o "$RUNNER_TEMP/ninja1.tar" "$NINJA_ARCHIVE/$NINJA_FILE"
+          echo "${NINJA1_SHA256}  $RUNNER_TEMP/ninja1.tar" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/ninja1"
+          tar -xf "$RUNNER_TEMP/ninja1.tar" -C "$RUNNER_TEMP/ninja1" --strip-components=1 ninja-1.01php/ninja.php
+          # shellcheck disable=SC2016
+          printf '<?php\nfunction split($p, $s) { return explode($p, $s); }\n' > "$RUNNER_TEMP/ninja1/shim.php"
+
+      - name: Exchange the boundary files in both directions
+        env:
+          PYTHONPATH: src
+          NINJA1: >-
+            php -d short_open_tag=On -d memory_limit=-1
+            -d auto_prepend_file=${{ runner.temp }}/ninja1/shim.php ${{ runner.temp }}/ninja1/ninja.php
+        run: python scripts/interop.py --tool ninja1 --work "$RUNNER_TEMP/interop"
+
   gdiff:
     name: javaxdelta and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04

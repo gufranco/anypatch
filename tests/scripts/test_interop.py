@@ -241,7 +241,7 @@ class TestAToolThatHangs:
         found = INTEROP._run("echo still going; sleep 5", paths)
 
         # Assert
-        assert found == "timed out after 1 s: echo still going; sleep 5 still going\n"
+        assert found == "timed out after 1 s: echo still going; sleep 5 still going"
 
 
 class TestAToolThatWritesNothing:
@@ -255,3 +255,15 @@ class TestAToolThatWritesNothing:
         # Assert
         assert done.returncode == 1
         assert "FAIL first-byte bsdiff bdf theirs the tool wrote no patch" in done.stdout
+
+
+class TestAnExchangeWithItsOwnTimeout:
+    def test_its_limit_replaces_the_default(self, tmp_path):
+        # Arrange
+        paths = {"out": tmp_path / "out.bin"}
+
+        # Act
+        found = INTEROP._run("sleep 5", paths, 1)
+
+        # Assert
+        assert found == "timed out after 1 s: sleep 5"
