@@ -136,7 +136,7 @@ class TestReading:
         assert str(raised.value) == (
             "notes.ips: not a patch in any format read here: "
             "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, "
-            "PAT, DPS, HDiffPatch, VPatch or xdelta"
+            "PAT, DPS, HDiffPatch, VPatch, JojoDiff or xdelta"
         )
 
     @pytest.mark.parametrize(
@@ -167,6 +167,17 @@ class TestReading:
 
         # Assert
         assert patch.format == expected
+
+    def test_a_jojodiff_patch_is_recognised_by_its_extension_alone(self, tmp_path):
+        # Arrange
+        path = tmp_path / "fix.jdf"
+        path.write_bytes(b"PATCH")
+
+        # Act
+        patch = patchio.read(path)
+
+        # Assert
+        assert patch.format == Format.JOJODIFF
 
     def test_a_file_it_cannot_read_is_refused(self, tmp_path):
         # Arrange

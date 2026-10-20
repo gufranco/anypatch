@@ -553,6 +553,33 @@ jobs:
           PYTHONPATH: src
         run: python scripts/interop.py --tool vpatch --work "$RUNNER_TEMP/interop"
 
+  jojodiff:
+    name: JojoDiff and anypatch exchange every boundary patch
+    runs-on: ubuntu-26.04
+    env:
+      JOJODIFF_COMMIT: 66a2806de9de417d5aff013e13d9af3267ed45a1
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Build the reference tool
+        run: |
+          cd "$RUNNER_TEMP"
+          git clone --quiet https://git.code.sf.net/p/jojodiff/code jojodiff
+          git -C jojodiff checkout --quiet "$JOJODIFF_COMMIT"
+          mkdir -p bin
+          c++ -O2 -w -fsigned-char -o bin/jdiff jojodiff/jdiff/src/*.cpp
+          ln -s jdiff bin/jpatch
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Exchange the boundary files in both directions
+        env:
+          PYTHONPATH: src
+        run: python scripts/interop.py --tool jojodiff --work "$RUNNER_TEMP/interop"
+
   gdiff:
     name: javaxdelta and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04

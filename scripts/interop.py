@@ -400,6 +400,12 @@ def exchanges() -> list[Exchange]:
             "vpatch-apply {source} {patch} {out}",
         ),
         Exchange(
+            "jojodiff",
+            Format.JOJODIFF,
+            "jdiff {source} {target} {patch}; [ $? -le 1 ]",
+            "jpatch {source} {patch} {out}",
+        ),
+        Exchange(
             "javaxdelta",
             Format.GDIFF,
             "java -cp $JAVAXDELTA com.nothome.delta.Delta {source} {target} {patch}",

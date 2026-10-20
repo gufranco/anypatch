@@ -16,6 +16,7 @@ from anypatch.formats import (
     hdiff,
     imagesize,
     ipswrite,
+    jojodiff,
     pat,
     pmsr,
     ppf,
@@ -49,6 +50,7 @@ class Format(StrEnum):
     DPS = "dps"
     HDIFF = "hdiff"
     VPATCH = "vpatch"
+    JOJODIFF = "jdf"
     XDELTA = "xdelta"
 
 
@@ -69,6 +71,7 @@ SUFFIXES = {
     ".pat": Format.PAT,
     ".dps": Format.DPS,
     ".hdiff": Format.HDIFF,
+    ".jdf": Format.JOJODIFF,
     ".xdelta": Format.XDELTA,
     ".vcdiff": Format.XDELTA,
     ".xd3": Format.XDELTA,
@@ -92,12 +95,13 @@ FAULTS = (
     dps.DpsError,
     hdiff.HdiffError,
     vpatch.VpatchError,
+    jojodiff.JojodiffError,
     vcdiff.VcdiffError,
     imagesize.ImageSizeError,
 )
 KNOWN = (
     "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, PAT, "
-    "DPS, HDiffPatch, VPatch or xdelta"
+    "DPS, HDiffPatch, VPatch, JojoDiff or xdelta"
 )
 MAGICS = (
     (ups.MAGIC, Format.UPS),
@@ -132,6 +136,7 @@ APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
     Format.DPS: dps.apply,
     Format.HDIFF: hdiff.apply,
     Format.VPATCH: vpatch.apply,
+    Format.JOJODIFF: jojodiff.apply,
     Format.XDELTA: vcdiff.apply,
 }
 Builder = Callable[[bytes, bytes, str], bytes]
@@ -152,12 +157,14 @@ BUILDERS: dict[Format, Builder] = {
     Format.PAT: lambda before, after, _: pat.build(before, after),
     Format.HDIFF: lambda before, after, _: hdiff.build(before, after),
     Format.VPATCH: lambda before, after, _: vpatch.build(before, after),
+    Format.JOJODIFF: lambda before, after, _: jojodiff.build(before, after),
     Format.DPS: lambda before, after, text: dps.build(before, after, description=text),
     Format.APS_GBA: lambda before, after, _: apsgba.build(before, after),
     Format.PMSR: lambda before, after, _: pmsr.build(before, after),
     Format.XDELTA: lambda before, after, _: vcdiff.build(before, after),
 }
 WRITABLE = (*BUILDERS, Format.ZPS)
+BY_EXTENSION = (Format.DPS, Format.JOJODIFF)
 
 
 class PatchError(ValueError):
@@ -181,8 +188,8 @@ def format_of(path: str | Path) -> Format:
 
 
 def identify(body: bytes, *, name: str) -> Format:
-    if SUFFIXES.get(Path(name).suffix.lower()) == Format.DPS:
-        return Format.DPS
+    if SUFFIXES.get(Path(name).suffix.lower()) in BY_EXTENSION:
+        return SUFFIXES[Path(name).suffix.lower()]
     if SUFFIXES.get(Path(name).suffix.lower()) == Format.PAT and pat.matches(body):
         return Format.PAT
     if body.startswith(ipswrite.MAGIC32):

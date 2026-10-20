@@ -27,6 +27,7 @@ NAMES = {
     Format.DPS: ("DPS", "the source size"),
     Format.HDIFF: ("HDiffPatch", "the source size"),
     Format.VPATCH: ("VPatch, NSIS", "MD5 or CRC32 of the source and of the result, per entry"),
+    Format.JOJODIFF: ("JojoDiff", NOTHING),
     Format.PAT: ("PAT, FireFlower", "the original value of every byte it changes"),
     Format.XDELTA: ("xdelta", "an Adler-32 checksum of every window, when present"),
 }
