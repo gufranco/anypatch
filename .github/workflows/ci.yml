@@ -580,6 +580,33 @@ jobs:
           PYTHONPATH: src
         run: python scripts/interop.py --tool jojodiff --work "$RUNNER_TEMP/interop"
 
+  dldi:
+    name: dlditool and anypatch patch every generated DLDI case alike
+    runs-on: ubuntu-26.04
+    env:
+      BLOCKSDS_COMMIT: 71c9bf7eaf9ae8aa89834a9674d2937956fb8b0e
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Build the reference tool
+        run: |
+          cd "$RUNNER_TEMP"
+          git clone --quiet --filter=blob:none --sparse https://github.com/blocksds/sdk.git blocksds
+          git -C blocksds sparse-checkout set tools/dlditool
+          git -C blocksds checkout --quiet "$BLOCKSDS_COMMIT"
+          mkdir -p bin
+          cc -O2 -std=gnu99 -DVERSION_STRING='"blocksds"' -o bin/dlditool blocksds/tools/dlditool/dlditool.c
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Patch every generated case with dlditool and anypatch
+        env:
+          PYTHONPATH: src
+        run: python scripts/interop.py --tool dlditool --work "$RUNNER_TEMP/interop"
+
   gdiff:
     name: javaxdelta and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04

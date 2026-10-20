@@ -136,7 +136,7 @@ class TestReading:
         assert str(raised.value) == (
             "notes.ips: not a patch in any format read here: "
             "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, "
-            "PAT, DPS, HDiffPatch, VPatch, JojoDiff or xdelta"
+            "PAT, DPS, HDiffPatch, VPatch, JojoDiff, DLDI or xdelta"
         )
 
     @pytest.mark.parametrize(
@@ -154,6 +154,7 @@ class TestReading:
             (b"BSDIFF40", Format.BDF),
             (b"\xd6\xc3\xc4\x00", Format.XDELTA),
             (b"VPAT\x00\x00\x00\x80", Format.VPATCH),
+            (b"\xed\xa5\x8d\xbf Chishm\x00\x01", Format.DLDI),
             (b"MZ stub VPAT\x00\x00\x00\x80\x08\x00\x00\x00", Format.VPATCH),
         ],
     )
@@ -255,6 +256,17 @@ class TestWriting:
 
         # Assert
         assert files == {".ips": b"PATCH" + bytes([0, 2, 0, 0, 1, 1]) + b"EOF"}
+
+    def test_a_format_that_is_only_read_is_refused_by_name(self):
+        # Arrange
+        before = bytes(16)
+
+        # Act
+        with pytest.raises(patchio.PatchError) as raised:
+            patchio.encode(Format.DLDI, before, before)
+
+        # Assert
+        assert str(raised.value) == "dldi: DLDI drivers are read here, never written"
 
     def test_a_format_that_cannot_express_the_change_says_which_to_use(self):
         # Arrange

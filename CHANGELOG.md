@@ -11,7 +11,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - HDiffPatch patches are read in both single-file layouts, HDIFF13 and HDIFFSF20, uncompressed or with zlib, bzip2, LZMA or LZMA2, and written as uncompressed HDIFF13. zstd sections are refused by name, since the Python standard library has no zstd before 3.14.
 - VPatch patches from NSIS are read in MD5 and CRC32 mode, with every entry of a multi-source file and with the header found through the pointer at the end of an installer, and written as one MD5 entry with `--format vpatch`.
 - JojoDiff patches are read and written with `--format jdf`. The format has no magic, so a JojoDiff patch is recognised by its `.jdf` extension.
-- Patches are exchanged with open-vcdiff, NINJA 1.01, HDiffPatch, NSIS VPatch and JojoDiff as well.
+- DLDI drivers are applied to Nintendo DS apps: the driver replaces the stub in the app's DLDI section and is relocated as dlditool does it, including its byte-by-byte pointer scan. A driver larger than the space the app reserves is refused, where dlditool only warns. Drivers are read, never written.
+- Patches are exchanged with open-vcdiff, NINJA 1.01, HDiffPatch, NSIS VPatch and JojoDiff as well, and DLDI drivers are checked against dlditool.
 
 ### Fixes
 

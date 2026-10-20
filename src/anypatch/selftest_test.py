@@ -35,6 +35,16 @@ class TestEveryFormat:
         # Assert
         assert check.detail == "reads and writes"
 
+    def test_a_format_that_is_only_read_says_it_is_never_written(self):
+        # Arrange
+        kind = Format.DLDI
+
+        # Act
+        check = selftest.check(kind)
+
+        # Assert
+        assert (check.status, check.detail) == (CheckStatus.OK, "reads; never written")
+
 
 class TestFailures:
     def test_a_probe_whose_result_differs_fails(self):

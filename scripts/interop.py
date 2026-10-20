@@ -12,6 +12,7 @@ from pathlib import Path
 
 from anypatch import api
 from anypatch import boundaries_test_support as boundaries
+from anypatch.formats import dldi_vectors_test_support as dldi_cases
 from anypatch.patchio import Format, PatchError
 
 TIMEOUT = 300
@@ -24,6 +25,7 @@ ROMJS_WRITES = (Format.IPS, Format.EBP, Format.UPS, Format.BPS, Format.PPF, Form
 ROMJS_READS = (*ROMJS_WRITES, Format.BDF, Format.APS_GBA, Format.PMSR)
 XDELTA_CODERS = ("none", "lzma", "djw", "fgk")
 NOTHING = "nothing matched the --tool and --case filters"
+DLDITOOL = "dlditool"
 
 
 @dataclass(frozen=True, slots=True)
@@ -528,6 +530,27 @@ def run(cases: Sequence[boundaries.Boundary], chosen: Sequence[Exchange], work: 
     return counts[Mark.FAIL]
 
 
+def _dldi(case: dldi_cases.Case, work: Path) -> str:
+    paths = {"app": work / "app.nds", "driver": work / "driver.dldi", "out": work / "app.nds"}
+    paths["app"].write_bytes(case.app)
+    paths["driver"].write_bytes(case.driver)
+    failed = _run(f"{DLDITOOL} {{driver}} {{app}}", paths)
+    if failed:
+        return failed
+    ours = api.apply(case.app, [api.load(case.driver, name=paths["driver"].name)]).image
+    return "" if ours == paths["app"].read_bytes() else "our output differs from dlditool's"
+
+
+def run_dldi(work: Path) -> int:
+    failures = {case.name: _dldi(case, work) for case in dldi_cases.cases()}
+    for name, detail in failures.items():
+        mark = Mark.FAIL if detail else Mark.PASS
+        print(f"{mark} {name} {DLDITOOL} dldi theirs {detail}".rstrip(), flush=True)
+    failed = sum(1 for detail in failures.values() if detail)
+    print(f"{len(failures) - failed} passed, {failed} failed")
+    return failed
+
+
 def _arguments(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Exchange boundary patches with reference tools")
     parser.add_argument(
@@ -551,6 +574,9 @@ def _tool_matches(name: str, wanted: Sequence[str]) -> bool:
 
 def main(argv: Sequence[str]) -> int:
     options = _arguments(argv)
+    if options.tool == [DLDITOOL]:
+        options.work.mkdir(parents=True, exist_ok=True)
+        return 1 if run_dldi(options.work) else 0
     chosen = [one for one in exchanges() if _tool_matches(one.tool, options.tool)]
     cases = [case for case in boundaries.cases() if _matches(case.name, options.case)]
     if not chosen or not cases:

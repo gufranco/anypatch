@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 from anypatch import api
 from anypatch.doctor import Check, CheckStatus
-from anypatch.formats import apsgba, pmsr
+from anypatch.formats import apsgba, dldi, pmsr
 from anypatch.patchio import WRITABLE, Format
 
 N64_MAGIC = b"\x80\x37\x12\x40"
@@ -17,6 +17,10 @@ GBA_TARGET = b"\x01" + GBA_SOURCE[1:]
 STAR_ROD_RECORD = (0x10, b"star")
 SAME_SIZE = (Format.PAT,)
 DIFFERS = "a patch it wrote did not replay to its target"
+DLDI_DRIVER_BASE = 0xBF800000
+DLDI_APP_BASE = 0x02000000
+DLDI_LOG2 = 7
+DLDI_STUB_AT = 0x40
 
 Probe = Callable[[Format], bool]
 
@@ -39,7 +43,22 @@ def _star_rod() -> bool:
     return pmsr.records(patch) == [STAR_ROD_RECORD]
 
 
+def _dldi_header(base: int) -> bytes:
+    fields = dldi.MAGIC + bytes([dldi.VERSION, DLDI_LOG2, 0, DLDI_LOG2])
+    head = fields + bytes(dldi.TEXT_START - len(fields)) + struct.pack("<I", base)
+    return head + bytes(dldi.HEADER - len(head))
+
+
+def _dldi() -> bool:
+    app = bytes(DLDI_STUB_AT) + _dldi_header(DLDI_APP_BASE) + bytes(1 << DLDI_LOG2)
+    patched = dldi.apply(app, _dldi_header(DLDI_DRIVER_BASE))
+    moved: int = struct.unpack_from("<I", patched, DLDI_STUB_AT + dldi.TEXT_START)[0]
+    return moved == DLDI_APP_BASE
+
+
 def _probe(kind: Format) -> bool:
+    if kind is Format.DLDI:
+        return _dldi()
     if kind is Format.APS_GBA:
         return _gba()
     if kind is Format.PMSR:

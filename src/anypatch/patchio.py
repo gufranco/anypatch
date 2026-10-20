@@ -11,6 +11,7 @@ from anypatch.formats import (
     bdf,
     bps,
     bsdiff43,
+    dldi,
     dps,
     gdiff,
     hdiff,
@@ -51,6 +52,7 @@ class Format(StrEnum):
     HDIFF = "hdiff"
     VPATCH = "vpatch"
     JOJODIFF = "jdf"
+    DLDI = "dldi"
     XDELTA = "xdelta"
 
 
@@ -72,6 +74,7 @@ SUFFIXES = {
     ".dps": Format.DPS,
     ".hdiff": Format.HDIFF,
     ".jdf": Format.JOJODIFF,
+    ".dldi": Format.DLDI,
     ".xdelta": Format.XDELTA,
     ".vcdiff": Format.XDELTA,
     ".xd3": Format.XDELTA,
@@ -96,12 +99,13 @@ FAULTS = (
     hdiff.HdiffError,
     vpatch.VpatchError,
     jojodiff.JojodiffError,
+    dldi.DldiError,
     vcdiff.VcdiffError,
     imagesize.ImageSizeError,
 )
 KNOWN = (
     "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, PAT, "
-    "DPS, HDiffPatch, VPatch, JojoDiff or xdelta"
+    "DPS, HDiffPatch, VPatch, JojoDiff, DLDI or xdelta"
 )
 MAGICS = (
     (ups.MAGIC, Format.UPS),
@@ -116,6 +120,7 @@ MAGICS = (
     (gdiff.MAGIC, Format.GDIFF),
     (hdiff.PREFIX, Format.HDIFF),
     (vpatch.MAGIC, Format.VPATCH),
+    (dldi.MAGIC, Format.DLDI),
     (vcdiff.MAGIC, Format.XDELTA),
 )
 APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
@@ -137,6 +142,7 @@ APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
     Format.HDIFF: hdiff.apply,
     Format.VPATCH: vpatch.apply,
     Format.JOJODIFF: jojodiff.apply,
+    Format.DLDI: dldi.apply,
     Format.XDELTA: vcdiff.apply,
 }
 Builder = Callable[[bytes, bytes, str], bytes]
@@ -165,6 +171,7 @@ BUILDERS: dict[Format, Builder] = {
 }
 WRITABLE = (*BUILDERS, Format.ZPS)
 BY_EXTENSION = (Format.DPS, Format.JOJODIFF)
+NEVER_WRITTEN = {Format.DLDI: "DLDI drivers"}
 
 
 class PatchError(ValueError):
@@ -241,6 +248,8 @@ def apply(source: bytes, patch: Patch) -> bytes:
 
 
 def encode(kind: Format, before: bytes, after: bytes, *, description: str = "") -> dict[str, bytes]:
+    if kind in NEVER_WRITTEN:
+        raise PatchError(f"{kind.value}: {NEVER_WRITTEN[kind]} are read here, never written")
     try:
         if kind == Format.ZPS:
             payload, header = zps.build(before, after)

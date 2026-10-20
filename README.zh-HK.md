@@ -91,6 +91,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | HDiffPatch | HDIFF13 和 HDIFFSF20，無壓縮或 zlib、bzip2、LZMA、LZMA2 | HDIFF13，無壓縮 | `.hdiff` | 來源大小 |
 | VPatch、NSIS | MD5 及 CRC32 兩種模式、多來源檔案的每個條目，以及安裝程式末端指標所指的檔頭 | 一個 MD5 條目，使用 `--format vpatch` | `.pat` | 每個條目的來源及結果的 MD5 或 CRC32 |
 | JojoDiff | 讀取，格式沒有魔數，按 `.jdf` 副檔名識別 | 使用 `--format jdf` | `.jdf` | 無 |
+| DLDI | 將驅動程式注入 DS 程式的 DLDI 區段，並按 dlditool 的方式重定位 | 否，驅動程式是編譯出來的，不是差分 | `.dldi` | 程式預留的、不小於驅動程式的 DLDI 區段 |
 | xdelta，VCDIFF | 是 | 是 | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | 修補檔附有時，每個視窗的 Adler-32 校驗和。讀取 xdelta3 的輸出，不論沒有二次壓縮、LZMA、DJW 或 FGK；也讀取 open-vcdiff 交錯且附校驗和的 S 版本，以及 RFC 3284 和 open-vcdiff 兩種排列的應用自訂碼表 |
 
 格式由內容決定；只有名為 `.zps` 或 `.ip1` 的 IPS 才按 ZPS 讀取。每個修補檔都單獨套用到乾淨的來源上，再比較各自改變的位元組。向同一位元組寫入不同值的兩個修補檔會被拒絕，並列出每個範圍和雙方的值；相同的寫入會合併。格式附有來源校驗和的修補檔，用在其他檔案上時會被拒絕並列出雙方的值；來源已經包含結果時，會報告為已套用。聲稱結果大於 1 GiB 且大於來源的修補檔，會在配置任何記憶體之前被拒絕。
