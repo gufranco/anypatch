@@ -36,11 +36,12 @@ Coverage is gated at 100% of statements and branches. When a branch cannot be re
 
 `src/anypatch/boundaries_test_support.py` generates files from fixed seeds at every edge a format has: the IPS 16 MiB wall and its `EOF` offset, record-length limits, 64 KiB GBA blocks, GDIFF command widths, VCDIFF windows, and a 40 MiB image whose CRC32 is forced to Paper Mario's so PMSR can be written. The content is random but known: each case's size and SHA-256 are pinned in `RECORDED`. `boundaries_test.py` writes every format for every case and checks the target comes back, and each refusal a format must make is declared in `REFUSED` with its message.
 
-`scripts/interop.py` exchanges the same files with programs that read or write each format, in both directions. Each CI interop job runs one tool. To run them all locally, use a Debian image with `xdelta3`, `bsdiff`, a JRE, Node.js and Python, a checkout of RomPatcher.js at the commit CI pins, and the javaxdelta and trove jars:
+`scripts/interop.py` exchanges the same files with programs that read or write each format, in both directions: xdelta3, bsdiff and bspatch, bsdiff4, mendsley's bsdiff and bspatch for BSDIFF43, Flips, ApplyPPF and MakePPF, NINJA 2.0, javaxdelta and RomPatcher.js. Each CI interop job installs or builds one of them at a pinned version and runs it with `--tool`; the job in [ci.yml](.github/workflows/ci.yml) is the recipe for running the same tool locally. With every tool on the path:
 
 ```bash
 PYTHONPATH=src ROMJS=<romjs checkout> ROMJS_HARNESS=<harness from ci.yml> \
-  JAVAXDELTA=<javaxdelta.jar>:<trove.jar> python scripts/interop.py --work <dir>
+  JAVAXDELTA=<javaxdelta.jar>:<trove.jar> NINJA="<php command from ci.yml>" \
+  python scripts/interop.py --work <dir>
 ```
 
 A failure caused by the other program is declared in `KNOWN` with the reason it was traced to. An entry that stops failing fails the run, so the table cannot go stale.
