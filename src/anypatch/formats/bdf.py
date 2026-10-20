@@ -45,20 +45,20 @@ def add(left: bytes, right: bytes) -> bytes:
     return found.to_bytes(len(left), "big")
 
 
-def _offt(value: int) -> bytes:
+def offt(value: int) -> bytes:
     return struct.pack("<Q", abs(value) | (SIGN if value < 0 else 0))
 
 
-def _read_offt(data: bytes, at: int) -> int:
+def read_offt(data: bytes, at: int) -> int:
     raw = int.from_bytes(data[at : at + FIELD], "little")
     return -(raw & ~SIGN) if raw & SIGN else raw
 
 
 def build(before: bytes, after: bytes) -> bytes:
     common = min(len(before), len(after))
-    control = bz2.compress(_offt(common) + _offt(len(after) - common) + _offt(0))
+    control = bz2.compress(offt(common) + offt(len(after) - common) + offt(0))
     diff = bz2.compress(subtract(after[:common], before[:common]))
-    header = MAGIC + _offt(len(control)) + _offt(len(diff)) + _offt(len(after))
+    header = MAGIC + offt(len(control)) + offt(len(diff)) + offt(len(after))
     return header + control + diff + bz2.compress(after[common:])
 
 
@@ -67,7 +67,7 @@ def _blocks(patch: bytes) -> Blocks:
         raise BdfError("not a BDF patch: it does not start with BSDIFF40")
     if len(patch) < HEADER:
         raise BdfError(f"the patch is {len(patch)} bytes, too short to hold a BDF header")
-    control, diff, size = (_read_offt(patch, at) for at in range(len(MAGIC), HEADER, FIELD))
+    control, diff, size = (read_offt(patch, at) for at in range(len(MAGIC), HEADER, FIELD))
     if min(control, diff, size) < 0:
         raise BdfError("the header holds a negative length")
     if HEADER + control + diff > len(patch):
@@ -119,12 +119,15 @@ class _Patcher:
 
 
 def apply(before: bytes, patch: bytes) -> bytes:
-    blocks = _blocks(patch)
+    return replay(before, _blocks(patch))
+
+
+def replay(before: bytes, blocks: Blocks) -> bytes:
     if len(blocks.control) % TRIPLE:
         raise BdfError(f"the control block is {len(blocks.control)} bytes, not a multiple of 24")
     patcher = _Patcher(before, blocks)
     for at in range(0, len(blocks.control), TRIPLE):
-        patcher.step(*(_read_offt(blocks.control, at + k) for k in range(0, TRIPLE, FIELD)))
+        patcher.step(*(read_offt(blocks.control, at + k) for k in range(0, TRIPLE, FIELD)))
     if patcher.new != blocks.size:
         raise BdfError(f"the control triples write {patcher.new:,} of {blocks.size:,} bytes")
     return bytes(patcher.out)
