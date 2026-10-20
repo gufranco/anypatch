@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, replace
 
-from anypatch.formats import imagesize
+from anypatch.formats import imagesize, romtypes
 from anypatch.formats.apswrite import differing_spans
 from anypatch.formats.ups import xor
 
@@ -28,6 +28,7 @@ class RupError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class Entry:
+    rom_type: int
     source_size: int
     target_size: int
     source_md5: bytes
@@ -96,7 +97,7 @@ class _Reader:
 
     def entry(self) -> Entry:
         self.take(self.number())
-        self.take(1)
+        rom_type = self.take(1)[0]
         source_size, target_size = self.number(), self.number()
         source_md5, target_md5 = self.take(MD5_LENGTH), self.take(MD5_LENGTH)
         overflow = b""
@@ -105,7 +106,7 @@ class _Reader:
             if mode not in (APPEND, MINIFY):
                 raise RupError(f"overflow mode {mode!r} is neither A nor M")
             overflow = _flipped(self.take(self.number()))
-        return Entry(source_size, target_size, source_md5, target_md5, overflow, ())
+        return Entry(rom_type, source_size, target_size, source_md5, target_md5, overflow, ())
 
 
 def _with_record(entries: list[Entry], reader: _Reader) -> list[Entry]:
@@ -157,13 +158,24 @@ def _forward(before: bytes, entry: Entry) -> bytes:
     return result
 
 
+def _views(kind: int, before: bytes) -> list[romtypes.Normalized]:
+    raw = romtypes.normalized(romtypes.RAW, before)
+    try:
+        converted = romtypes.normalized(kind, before)
+    except romtypes.RomTypeError:
+        return [raw]
+    return [converted, raw]
+
+
 def apply(before: bytes, patch: bytes) -> bytes:
     entries = _entries(patch)
-    digest = hashlib.md5(before).digest()
-    for entry in entries:
+    pairs = [(entry, view) for entry in entries for view in _views(entry.rom_type, before)]
+    digests = [(entry, view, hashlib.md5(view.data).digest()) for entry, view in pairs]
+    for entry, view, digest in digests:
         if entry.source_md5 == digest:
-            return _forward(before, entry)
-    if any(entry.target_md5 == digest for entry in entries):
+            return view.restore(_forward(view.data, entry))
+    if any(entry.target_md5 == digest for entry, _, digest in digests):
         return before
+    digest = hashlib.md5(before).digest()
     wanted = ", ".join(entry.source_md5.hex() for entry in entries)
     raise RupError(f"made for MD5 {wanted}, but this dump is {digest.hex()}")

@@ -2,7 +2,7 @@ import hashlib
 
 import pytest
 
-from anypatch.formats import imagesize, rup
+from anypatch.formats import imagesize, romtypes, rup
 
 
 def md5(data: bytes) -> bytes:
@@ -156,3 +156,55 @@ class TestTheSizeCeiling:
 
         # Assert
         assert "ceiling" in str(raised.value)
+
+
+def typed(before: bytes, after: bytes, kind: int) -> bytes:
+    patch = bytearray(rup.build(before, after))
+    patch[rup.HEADER + 2] = kind
+    return bytes(patch)
+
+
+INES = b"NES\x1a" + bytes(range(12))
+
+
+class TestRomTypes:
+    def test_a_nes_patch_applies_to_an_ines_dump_and_keeps_its_header(self):
+        # Arrange
+        patch = typed(b"original game", b"patched game!", romtypes.NES)
+
+        # Act
+        result = rup.apply(INES + b"original game", patch)
+
+        # Assert
+        assert result == INES + b"patched game!"
+
+    def test_a_dump_that_already_carries_a_typed_patch_comes_back_unchanged(self):
+        # Arrange
+        patch = typed(b"original game", b"patched game!", romtypes.NES)
+
+        # Act
+        result = rup.apply(INES + b"patched game!", patch)
+
+        # Assert
+        assert result == INES + b"patched game!"
+
+    def test_a_dump_the_type_cannot_read_is_compared_as_it_is(self):
+        # Arrange
+        patch = typed(b"no header here", b"no header HERE", romtypes.NES)
+
+        # Act
+        result = rup.apply(b"no header here", patch)
+
+        # Assert
+        assert result == b"no header HERE"
+
+    def test_a_typed_patch_on_another_dump_names_the_raw_md5(self):
+        # Arrange
+        patch = typed(b"original game", b"patched game!", romtypes.NES)
+
+        # Act
+        with pytest.raises(rup.RupError) as raised:
+            rup.apply(INES + b"another game!", patch)
+
+        # Assert
+        assert f"this dump is {md5(INES + b'another game!').hex()}" in str(raised.value)
