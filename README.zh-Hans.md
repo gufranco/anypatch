@@ -21,37 +21,74 @@
 ---
 
 > [!WARNING]
-> 本项目处于实验阶段，正在积极开发。补丁格式正从 [n64-save-patches](https://github.com/gufranco/n64-save-patches-python) 迁移过来，将在接下来的版本中陆续加入。命令和库 API 可能不经通知就改变。
+> 本项目处于实验阶段，正在积极开发。命令和库 API 可能不经通知就改变，更多格式会在接下来的版本中加入。
 
 anypatch 是建立在同一份代码之上的一个库和一个命令行。每项功能都既是一个带类型的 Python 函数，也是一条命令，而命令只调用该函数。库除 Python 标准库外不需要任何东西；命令行另外使用 Typer。
 
 ## 用法
 
 ```console
-$ anypatch doctor
-anypatch     0.1.0
-python       3.14.0
-platform     Darwin arm64
-zlib         available
-bz2          available
-lzma         available
+$ anypatch make clean.bin hacked.bin -o title.bps
+wrote          title.bps, 38 bytes
+$ anypatch apply clean.bin title.bps fix.ips -o out.bin
+applied        title.bps, fix.ips
+wrote          out.bin, 65,536 bytes
+$ anypatch apply clean.bin title.bps clash.ups -o never.bin
+the patches conflict:
+  0x000104..0x000106: title.bps writes 5449, clash.ups writes 5858
+$ anypatch merge clean.bin title.bps fix.ips -o both.xdelta
+wrote          both.xdelta, 52 bytes
+$ anypatch info title.bps
+format         BPS
+bound by       CRC32 of the source and of the result
+size           38 bytes
 ```
 
 ```python
-from anypatch import doctor
+from pathlib import Path
 
-report = doctor.diagnose()
-print(report.healthy)
+from anypatch import api
+from anypatch.patchio import Format
+
+clean = Path("clean.bin").read_bytes()
+patches = [api.load(Path(name).read_bytes(), name=name) for name in ("title.bps", "fix.ips")]
+Path("out.bin").write_bytes(api.apply(clean, patches).image)
+Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelta"])
 ```
-
-没有检查失败时 `doctor` 以 0 退出，有一项失败时以 1 退出。正在运行的 Python 缺少的编解码器会显示为 `missing`，依赖它的格式不会被读取；仅此一点不会让安装判定为失败。`anypatch doctor --json` 以带 `healthy` 和 `checks` 的 JSON 输出同样的报告。
 
 ## 命令
 
-| 命令 | 库 | 回答的问题 |
+| 命令 | 库，位于 `anypatch.api` | 回答的问题 |
 |:--|:--|:--|
-| `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | 这次安装能否工作：版本、Python、平台，以及各格式使用的标准库编解码器 |
+| `anypatch make <before> <after> -o <patch>` | `make(before, after, format)` | 把一个文件变成另一个文件的补丁。除非用 `--format` 指定，否则由 `-o` 的扩展名决定格式 |
+| `anypatch apply <source> <patch>... -o <out>` | `apply(source, patches)` | 经过冲突检查后，应用了所有补丁的源文件 |
+| `anypatch merge <source> <patch>... -o <patch>` | `merge(source, patches, format)` | 一个效果等于所有补丁之和的补丁 |
+| `anypatch convert <source> <patch> -o <patch>` | `convert(source, patch, format)` | 以另一种格式表达的同一改动 |
+| `anypatch info <patch> [--json]` | `identify(data, name=...)` | 补丁是什么格式，以及什么把它绑定到源文件 |
+| `anypatch formats [--json]` | `formats()` | 每种格式、能否读取和写出，以及扩展名 |
+| `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | 这次安装能否工作：版本、Python、平台、编解码器，以及每种格式的往返检查 |
 | `anypatch --version` | `anypatch.version.VERSION` | 已安装的版本 |
+
+`apply` 和 `merge` 的 `--clean <file>` 在输入已带有补丁时指定干净的源文件。`--description` 设置 APS、EBP、PPF 或 RUP 补丁携带的文字。所有输出都在写入任何内容之前生成，所以拒绝时不会留下文件。错误写到标准错误，退出码为 1。
+
+## 格式
+
+| 格式 | 读取 | 写出 | 扩展名 | 绑定到源文件的方式 |
+|:--|:--|:--|:--|:--|
+| IPS | 是 | 是 | `.ips` | 无。超过 16 MiB 的改动写成 IPS32 |
+| EBP | 是 | 是 | `.ebp` | 无。在 `EOF` 之后带 JSON 元数据的 IPS |
+| ZPS | 是 | 是 | `.zps`、`.ip1` | 旁边的 `.hdr`，即源文件的前 64 字节，按 CRC 对比较 |
+| N64 用 APS | 是 | 是 | `.aps` | 文件头中的卡带代码、地区和 CRC 对 |
+| GBA 用 APS | 是 | 否 | `.aps` | 源文件大小，以及每个 64 KiB 块的 CRC16 |
+| UPS | 是 | 是 | `.ups` | 源文件和结果的 CRC32 |
+| BPS | 是 | 是 | `.bps` | 源文件和结果的 CRC32 |
+| PPF 1.0、2.0、3.0 | 是 | 写成带撤销数据的 3.0 | `.ppf` | PPF 2.0 的源文件大小和块校验；PPF 3.0 的块校验和撤销数据 |
+| RUP，NINJA 2.0 | 是 | 是 | `.rup` | 每个文件条目的源文件和结果的 MD5 |
+| PMSR | 是 | 否 | `.mod`、`.pmsr` | Paper Mario USA 1.0，按大小和 CRC32；原样或在 Yay0 之中均可 |
+| BDF，bsdiff 4 | 是 | 是 | `.bdf`、`.bsdiff` | 无 |
+| xdelta，VCDIFF | 是 | 是 | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | 补丁带有时，每个窗口的 Adler-32 校验和。读取 xdelta3 的输出，无论无二次压缩、LZMA、DJW 还是 FGK |
+
+格式由内容决定；只有名为 `.zps` 或 `.ip1` 的 IPS 才按 ZPS 读取。每个补丁都单独应用到干净的源文件上，再比较各自改变的字节。向同一字节写入不同值的两个补丁会被拒绝，并列出每个范围和双方的值；相同的写入会合并。格式带有源文件校验和的补丁，用在其他文件上时会被拒绝并给出双方的值；源文件已经包含结果时，会报告为已应用。声称结果大于 1 GiB 且大于源文件的补丁，会在分配任何内存之前被拒绝。
 
 ## 安装
 
