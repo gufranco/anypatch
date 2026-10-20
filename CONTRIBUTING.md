@@ -28,9 +28,22 @@ Coverage is gated at 100% of statements and branches. When a branch cannot be re
 
 1. The specification or open implementation it was learned from, added to [NOTICE.md](NOTICE.md) with its license.
 2. Reference patches written by another program or printed in the specification, stored as data, and a test that applies each one to its target.
-3. When a program exists that reads the format, a CI job that applies the patches anypatch writes with that program.
+3. When a program exists that reads or writes the format, an exchange for it in `scripts/interop.py` and a CI job that runs it.
 4. A library function and a command for every capability, tested to produce the same bytes.
 5. A line in `doctor` that decodes one embedded vector of the format.
+
+## Boundary files and reference tools
+
+`src/anypatch/boundaries_test_support.py` generates files from fixed seeds at every edge a format has: the IPS 16 MiB wall and its `EOF` offset, record-length limits, 64 KiB GBA blocks, GDIFF command widths, VCDIFF windows, and a 40 MiB image whose CRC32 is forced to Paper Mario's so PMSR can be written. The content is random but known: each case's size and SHA-256 are pinned in `RECORDED`. `boundaries_test.py` writes every format for every case and checks the target comes back, and each refusal a format must make is declared in `REFUSED` with its message.
+
+`scripts/interop.py` exchanges the same files with programs that read or write each format, in both directions. Each CI interop job runs one tool. To run them all locally, use a Debian image with `xdelta3`, `bsdiff`, a JRE, Node.js and Python, a checkout of RomPatcher.js at the commit CI pins, and the javaxdelta and trove jars:
+
+```bash
+PYTHONPATH=src ROMJS=<romjs checkout> ROMJS_HARNESS=<harness from ci.yml> \
+  JAVAXDELTA=<javaxdelta.jar>:<trove.jar> python scripts/interop.py --work <dir>
+```
+
+A failure caused by the other program is declared in `KNOWN` with the reason it was traced to. An entry that stops failing fails the run, so the table cannot go stale.
 
 ## Things this project will not accept
 

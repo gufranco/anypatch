@@ -260,7 +260,7 @@ jobs:
           CHECK
 
   xdelta:
-    name: xdelta3 and anypatch read each other's patches
+    name: xdelta3 and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
@@ -269,56 +269,24 @@ jobs:
         with:
           python-version: "3.14"
 
-      - name: Install anypatch and the reference tool
+      - name: Install the reference tool
         run: |
-          python -m pip install --disable-pip-version-check ".[cli]"
           sudo apt-get update -qq
           sudo apt-get install -y -qq xdelta3
 
-      - name: Patches cross between anypatch and xdelta3 in both directions
-        run: |
-          python - <<'CHECK'
-          import subprocess
-          import sys
-          from pathlib import Path
-
-          source = bytes((at * 2654435761 >> 16) & 0xFF for at in range(300000))
-          target = bytearray(source)
-          target[1000:1010] = b"0123456789"
-          target[200000:200040] = bytes(40)
-          target = bytes(target) + b"appended tail" * 50
-          Path("source.bin").write_bytes(source)
-          Path("target.bin").write_bytes(target)
-
-          def run(*args):
-              done = subprocess.run(list(args), capture_output=True, text=True)
-              print(f"$ {' '.join(args)}\n{done.stdout}{done.stderr}")
-              if done.returncode != 0:
-                  print(f"::error title={args[0]} failed::{' '.join(args)}")
-                  sys.exit(1)
-
-          def same(path, who):
-              if Path(path).read_bytes() != target:
-                  print(f"::error title=Wrong output::{who}")
-                  sys.exit(1)
-
-          run("anypatch", "make", "source.bin", "target.bin", "-o", "ours.xdelta")
-          run("xdelta3", "-d", "-f", "-s", "source.bin", "ours.xdelta", "theirs-read.bin")
-          same("theirs-read.bin", "xdelta3 misread anypatch's patch")
-          for flags in (["-S", "none"], ["-S", "lzma"], ["-S", "djw9"], ["-S", "fgk"]):
-              run("xdelta3", "-e", "-f", *flags, "-s", "source.bin", "target.bin", "theirs.xdelta")
-              run("anypatch", "apply", "source.bin", "theirs.xdelta", "-o", "ours-read.bin")
-              same("ours-read.bin", f"anypatch misread an xdelta3 {flags} patch")
-          print("both tools read each other's patches")
-          CHECK
-        shell: bash
+      - name: Exchange the boundary files in both directions
+        env:
+          PYTHONPATH: src
+        run: python scripts/interop.py --tool xdelta3 --work "$RUNNER_TEMP/interop"
 
   gdiff:
-    name: javaxdelta and anypatch read each other's GDIFF patches
+    name: javaxdelta and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04
     env:
       JAVAXDELTA_SHA256: a661dfcb749053fc26eada2a0a8e619a8ead1ca9eda29e1698687aa2cdd80152
       TROVE_SHA256: ad68a86cfd0255a2bc0525ce11ec49640caea7e34ff91eb89c3193dcccd77f05
+      JAVAXDELTA_URL: https://repo1.maven.org/maven2/com/nothome/javaxdelta/2.0.1/javaxdelta-2.0.1.jar
+      TROVE_URL: https://repo1.maven.org/maven2/trove/trove/1.0.2/trove-1.0.2.jar
     steps:
       - uses: actions/checkout@v7
 
@@ -331,54 +299,21 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Install anypatch and the reference tool
+      - name: Install the reference tool
         run: |
-          python -m pip install --disable-pip-version-check ".[cli]"
-          curl -sfL -o javaxdelta.jar https://repo1.maven.org/maven2/com/nothome/javaxdelta/2.0.1/javaxdelta-2.0.1.jar
-          curl -sfL -o trove.jar https://repo1.maven.org/maven2/trove/trove/1.0.2/trove-1.0.2.jar
-          echo "${JAVAXDELTA_SHA256}  javaxdelta.jar" | sha256sum -c -
-          echo "${TROVE_SHA256}  trove.jar" | sha256sum -c -
+          curl -sfL -o "$RUNNER_TEMP/javaxdelta.jar" "$JAVAXDELTA_URL"
+          curl -sfL -o "$RUNNER_TEMP/trove.jar" "$TROVE_URL"
+          echo "${JAVAXDELTA_SHA256}  $RUNNER_TEMP/javaxdelta.jar" | sha256sum -c -
+          echo "${TROVE_SHA256}  $RUNNER_TEMP/trove.jar" | sha256sum -c -
 
-      - name: Patches cross between anypatch and javaxdelta in both directions
-        run: |
-          python - <<'CHECK'
-          import subprocess
-          import sys
-          from pathlib import Path
-
-          source = bytes((at * 2654435761 >> 16) & 0xFF for at in range(300000))
-          target = bytearray(source)
-          target[1000:1010] = b"0123456789"
-          target[200000:200040] = bytes(40)
-          target = bytes(target[:5000]) + bytes(target[90000:]) + bytes(target[5000:90000]) + b"tail" * 50
-          Path("source.bin").write_bytes(source)
-          Path("target.bin").write_bytes(target)
-          java = ["java", "-cp", "javaxdelta.jar:trove.jar"]
-
-          def run(*args):
-              done = subprocess.run(list(args), capture_output=True, text=True)
-              print(f"$ {' '.join(args)}\n{done.stdout}{done.stderr}")
-              if done.returncode != 0:
-                  print(f"::error title={args[0]} failed::{' '.join(args)}")
-                  sys.exit(1)
-
-          def same(path, who):
-              if Path(path).read_bytes() != target:
-                  print(f"::error title=Wrong output::{who}")
-                  sys.exit(1)
-
-          run("anypatch", "make", "source.bin", "target.bin", "-o", "ours.gdiff")
-          run(*java, "com.nothome.delta.GDiffPatcher", "source.bin", "ours.gdiff", "theirs-read.bin")
-          same("theirs-read.bin", "javaxdelta misread anypatch's GDIFF patch")
-          run(*java, "com.nothome.delta.Delta", "source.bin", "target.bin", "theirs.gdiff")
-          run("anypatch", "apply", "source.bin", "theirs.gdiff", "-o", "ours-read.bin")
-          same("ours-read.bin", "anypatch misread a javaxdelta GDIFF patch")
-          print("both tools read each other's patches")
-          CHECK
-        shell: bash
+      - name: Exchange the boundary files in both directions
+        env:
+          PYTHONPATH: src
+          JAVAXDELTA: ${{ runner.temp }}/javaxdelta.jar:${{ runner.temp }}/trove.jar
+        run: python scripts/interop.py --tool javaxdelta --work "$RUNNER_TEMP/interop"
 
   romjs:
-    name: RomPatcher.js, bsdiff and anypatch read each other's patches
+    name: RomPatcher.js, bsdiff and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04
     env:
       ROMJS_COMMIT: 3183884086825c3a57c72026234debcef1e2240c
@@ -393,9 +328,8 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install anypatch and the reference tools
+      - name: Install the reference tools
         run: |
-          python -m pip install --disable-pip-version-check ".[cli]"
           sudo apt-get update -qq
           sudo apt-get install -y -qq bsdiff
           git clone --quiet --filter=blob:none https://github.com/marcrobledo/RomPatcher.js.git "$RUNNER_TEMP/romjs"
@@ -417,60 +351,9 @@ jobs:
           }
           HARNESS
 
-      - name: Patches cross between anypatch and the references in both directions
+      - name: Exchange the boundary files in both directions
         env:
+          PYTHONPATH: src
           ROMJS: ${{ runner.temp }}/romjs
-          HARNESS: ${{ runner.temp }}/romjs.js
-        run: |
-          python - <<'CHECK'
-          import os
-          import subprocess
-          import sys
-          from pathlib import Path
-
-          body = bytes((at * 2654435761 >> 16) & 0xFF for at in range(200000))
-          source = b"\x80\x37\x12\x40" + body
-          target = bytearray(source)
-          target[1000:1010] = b"0123456789"
-          target[150000:150040] = bytes(40)
-          target = bytes(target) + b"appended tail" * 50
-          Path("source.bin").write_bytes(source)
-          Path("target.bin").write_bytes(target)
-
-          def run(*args):
-              done = subprocess.run(list(args), capture_output=True, text=True)
-              print(f"$ {' '.join(args)}\n{done.stdout}{done.stderr}")
-              if done.returncode != 0:
-                  print(f"::error title={args[0]} failed::{' '.join(args)}")
-                  sys.exit(1)
-
-          def same(path, who):
-              if Path(path).read_bytes() != target:
-                  print(f"::error title=Wrong output::{who}")
-                  sys.exit(1)
-
-          harness = os.environ["HARNESS"]
-          for kind in ("ips", "ebp", "ups", "bps", "ppf", "aps", "rup"):
-              run("anypatch", "make", "source.bin", "target.bin", "-o", f"ours.{kind}")
-              run("node", harness, "apply", "source.bin", f"ours.{kind}", f"theirs-read.{kind}")
-              same(f"theirs-read.{kind}", f"RomPatcher.js misread anypatch's {kind} patch")
-              run("node", harness, "create", "source.bin", "target.bin", kind, f"theirs.{kind}")
-              run("anypatch", "apply", "source.bin", f"theirs.{kind}", "-o", f"ours-read.{kind}")
-              same(f"ours-read.{kind}", f"anypatch misread a RomPatcher.js {kind} patch")
-          run("anypatch", "make", "source.bin", "target.bin", "-o", "ours.bdf")
-          run("bspatch", "source.bin", "bspatch-read.bin", "ours.bdf")
-          same("bspatch-read.bin", "bspatch misread anypatch's BDF patch")
-          run("node", harness, "apply", "source.bin", "ours.bdf", "romjs-read.bdf")
-          same("romjs-read.bdf", "RomPatcher.js misread anypatch's BDF patch")
-          run("bsdiff", "source.bin", "target.bin", "theirs.bdf")
-          run("anypatch", "apply", "source.bin", "theirs.bdf", "-o", "ours-read.bdf")
-          same("ours-read.bdf", "anypatch misread a bsdiff patch")
-          Path("same-size.bin").write_bytes(target[: len(source)])
-          run("anypatch", "make", "source.bin", "same-size.bin", "-o", "ours.gba.aps", "--format", "aps-gba")
-          run("node", harness, "apply", "source.bin", "ours.gba.aps", "romjs-read.gba")
-          if Path("romjs-read.gba").read_bytes() != target[: len(source)]:
-              print("::error title=Wrong output::RomPatcher.js misread anypatch's APS for GBA patch")
-              sys.exit(1)
-          print("every tool reads every other tool's patches")
-          CHECK
-        shell: bash
+          ROMJS_HARNESS: ${{ runner.temp }}/romjs.js
+        run: python scripts/interop.py --tool romjs --tool bsdiff --work "$RUNNER_TEMP/interop"
