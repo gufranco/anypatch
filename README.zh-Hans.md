@@ -75,7 +75,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | IPS | 是 | 是 | `.ips` | 无。超过 16 MiB 的改动写成 IPS32 |
 | EBP | 是 | 是 | `.ebp` | 无。在 `EOF` 之后带 JSON 元数据的 IPS |
 | ZPS | 是 | 是 | `.zps`、`.ip1` | 旁边的 `.hdr`，即源文件的前 64 字节，按 CRC 对比较 |
-| N64 用 APS | 是 | 是 | `.aps` | 文件头中的卡带代码、地区和 CRC 对 |
+| N64 用 APS | 是，原生或字节交换顺序 | 原生顺序 | `.aps` | 文件头中的卡带代码、地区和 CRC 对 |
 | GBA 用 APS | 是 | 否 | `.aps` | 源文件大小，以及每个 64 KiB 块的 CRC16 |
 | UPS | 是 | 是 | `.ups` | 源文件和结果的 CRC32 |
 | BPS | 是 | 是 | `.bps` | 源文件和结果的 CRC32 |

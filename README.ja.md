@@ -75,7 +75,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | IPS | はい | はい | `.ips` | なし。16 MiB を超える変更は IPS32 で書き出します |
 | EBP | はい | はい | `.ebp` | なし。`EOF` の後ろに JSON のメタデータを持つ IPS |
 | ZPS | はい | はい | `.zps`、`.ip1` | 横に置く `.hdr`。ソースの先頭 64 バイトで、CRC の組で照合します |
-| N64 用 APS | はい | はい | `.aps` | ヘッダのカートコード、地域、CRC の組 |
+| N64 用 APS | はい、ネイティブとバイトスワップの両方 | ネイティブ | `.aps` | ヘッダのカートコード、地域、CRC の組 |
 | GBA 用 APS | はい | いいえ | `.aps` | 元のサイズと、64 KiB ブロックごとの CRC16 |
 | UPS | はい | はい | `.ups` | 元と結果の CRC32 |
 | BPS | はい | はい | `.bps` | 元と結果の CRC32 |

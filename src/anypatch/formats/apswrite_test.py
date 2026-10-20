@@ -264,7 +264,7 @@ class TestWhatApplyRefuses:
             (0, ord("X"), "not an APS patch"),
             (len(apswrite.MAGIC), 0, "another system"),
             (len(apswrite.MAGIC) + 1, 1, "another system"),
-            (apswrite.FORMAT_OFFSET, apswrite.FORMAT_BYTESWAPPED, "byte-swapped"),
+            (apswrite.FORMAT_OFFSET, 7, "order byte 7"),
         ],
     )
     def test_a_header_it_cannot_read_is_refused(self, at, value, message):
@@ -299,3 +299,64 @@ class TestWhatApplyRefuses:
 
         # Assert
         assert message in str(raised.value)
+
+
+def swapped_patch(before: bytes, after: bytes) -> bytes:
+    patch = bytearray(apswrite.build(apswrite.byteswapped(before), apswrite.byteswapped(after)))
+    patch[apswrite.FORMAT_OFFSET] = apswrite.FORMAT_BYTESWAPPED
+    patch[apswrite.CART_OFFSET : apswrite.CART_OFFSET + 2] = before[
+        apswrite.ROM_CART_OFFSET : apswrite.ROM_CART_OFFSET + 2
+    ]
+    patch[apswrite.COUNTRY_OFFSET] = before[apswrite.ROM_COUNTRY_OFFSET]
+    patch[apswrite.CRC_OFFSET : apswrite.CRC_OFFSET + 8] = before[
+        apswrite.ROM_CRC_OFFSET : apswrite.ROM_CRC_OFFSET + 8
+    ]
+    return bytes(patch)
+
+
+class TestByteSwappedPatches:
+    def test_swapping_exchanges_each_pair_of_bytes(self):
+        # Arrange
+        data = b"\x80\x37\x12\x40"
+
+        # Act
+        swapped = apswrite.byteswapped(data)
+
+        # Assert
+        assert swapped == b"\x37\x80\x40\x12"
+
+    def test_records_for_the_v64_image_apply_to_the_native_dump(self):
+        # Arrange
+        before = rom(0x200)
+        after = changed(changed(before, 0x80, 0x11223344), 0x101, 0x55667788)
+        patch = swapped_patch(before, after)
+
+        # Act
+        replayed = apswrite.apply(before, patch)
+
+        # Assert
+        assert replayed == after
+
+    def test_a_byte_swapped_patch_still_checks_the_native_binding(self):
+        # Arrange
+        before = rom(0x200)
+        patch = swapped_patch(before, changed(before, 0x80, 1))
+        other = changed(before, apswrite.ROM_CRC_OFFSET, 0x12345678)
+
+        # Act
+        with pytest.raises(apswrite.ApsError) as raised:
+            apswrite.apply(other, patch)
+
+        # Assert
+        assert "but this dump is NSE 12345678 71FA4EE4" in str(raised.value)
+
+    def test_an_odd_sized_dump_cannot_be_byte_swapped(self):
+        # Arrange
+        data = b"\x80\x37\x12"
+
+        # Act
+        with pytest.raises(apswrite.ApsError) as raised:
+            apswrite.byteswapped(data)
+
+        # Assert
+        assert str(raised.value) == "a byte-swapped patch needs an even-sized dump, not 3 bytes"

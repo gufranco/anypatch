@@ -75,7 +75,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | IPS | 是 | 是 | `.ips` | 沒有。超過 16 MiB 的改動寫成 IPS32 |
 | EBP | 是 | 是 | `.ebp` | 沒有。在 `EOF` 之後附 JSON 中繼資料的 IPS |
 | ZPS | 是 | 是 | `.zps`、`.ip1` | 旁邊的 `.hdr`，即來源的首 64 個位元組，按 CRC 組合比對 |
-| N64 用 APS | 是 | 是 | `.aps` | 檔頭中的卡帶代碼、地區和 CRC 組合 |
+| N64 用 APS | 是，原生或位元組交換次序 | 原生次序 | `.aps` | 檔頭中的卡帶代碼、地區和 CRC 組合 |
 | GBA 用 APS | 是 | 否 | `.aps` | 來源大小，以及每個 64 KiB 區塊的 CRC16 |
 | UPS | 是 | 是 | `.ups` | 來源和結果的 CRC32 |
 | BPS | 是 | 是 | `.bps` | 來源和結果的 CRC32 |

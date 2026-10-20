@@ -75,7 +75,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | IPS | yes | yes | `.ips` | Nothing. A change past 16 MiB is written as IPS32 |
 | EBP | yes | yes | `.ebp` | Nothing. IPS with JSON metadata after `EOF` |
 | ZPS | yes | yes | `.zps`, `.ip1` | The `.hdr` beside it, the source's first 64 bytes, compared by CRC pair |
-| APS for N64 | yes | yes | `.aps` | Cart code, country and CRC pair in its header |
+| APS for N64 | yes, native or byte-swapped | native | `.aps` | Cart code, country and CRC pair in its header |
 | APS for GBA | yes | no | `.aps` | The source size and a CRC16 of each 64 KiB block |
 | UPS | yes | yes | `.ups` | CRC32 of the source and of the result |
 | BPS | yes | yes | `.bps` | CRC32 of the source and of the result |

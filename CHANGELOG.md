@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### What's new
 
+- APS patches made for byte-swapped `.v64` dumps are read and applied to the native dump. All 21 community APS patches for the Mr. Backup Z64 apply and pass the boot checksum.
+
+## 0.2.0
+
+### What's new
+
 - Read IPS, IPS32, EBP, ZPS, APS for N64 and GBA, UPS, BPS, PPF 1.0 to 3.0, RUP, PMSR with or without Yay0, BDF and xdelta, and write all of them except APS for GBA and PMSR. The format code moved here from n64-save-patches with its history.
 - `anypatch make`, `apply`, `merge`, `convert`, `info` and `formats`, each the same as the function of that name in `anypatch.api`.
 - Applying several patches compares what each changes on the clean source and refuses any two that write different bytes to one place, listing every range.

@@ -10,6 +10,7 @@ DESCRIPTION_LENGTH = 50
 FORMAT_OFFSET = 0x39
 FORMAT_NATIVE = 1
 FORMAT_BYTESWAPPED = 0
+ORDERS = (FORMAT_BYTESWAPPED, FORMAT_NATIVE)
 CART_OFFSET = 0x3A
 COUNTRY_OFFSET = 0x3C
 CRC_OFFSET = 0x3D
@@ -127,8 +128,11 @@ def check(before: bytes, patch: bytes) -> None:
         raise ApsError("not an APS patch: it does not start with an APS10 header")
     if patch[len(MAGIC)] != TYPE_N64 or patch[len(MAGIC) + 1] != ENCODING_SIMPLE:
         raise ApsError("an APS patch for another system or encoding; only N64 simple is read")
-    if patch[FORMAT_OFFSET] != FORMAT_NATIVE:
-        raise ApsError("an APS patch for a byte-swapped .v64 dump; this tool reads .z64")
+    if patch[FORMAT_OFFSET] not in ORDERS:
+        raise ApsError(
+            f"an APS patch with order byte {patch[FORMAT_OFFSET]}; "
+            "only 0, byte-swapped, and 1, native, are read"
+        )
     if len(before) < HEADER_MINIMUM or _binding(before) != _bound(patch):
         have = _described(_binding(before)) if len(before) >= HEADER_MINIMUM else "no header"
         raise ApsError(f"bound to {_described(_bound(patch))}, but this dump is {have}")
@@ -152,12 +156,23 @@ def _record(patch: bytes, at: int, size: int) -> tuple[int, bytes, int]:
     return offset, data, end
 
 
+def byteswapped(data: bytes) -> bytes:
+    if len(data) % 2:
+        raise ApsError(f"a byte-swapped patch needs an even-sized dump, not {len(data):,} bytes")
+    out = bytearray(len(data))
+    out[0::2] = data[1::2]
+    out[1::2] = data[0::2]
+    return bytes(out)
+
+
 def apply(before: bytes, patch: bytes) -> bytes:
     check(before, patch)
+    swapped = patch[FORMAT_OFFSET] == FORMAT_BYTESWAPPED
+    image = byteswapped(before) if swapped else before
     size = struct.unpack_from("<I", patch, SIZE_OFFSET)[0]
-    out = bytearray(before[:size].ljust(size, b"\x00"))
+    out = bytearray(image[:size].ljust(size, b"\x00"))
     at = RECORDS_OFFSET
     while at < len(patch):
         offset, data, at = _record(patch, at, size)
         out[offset : offset + len(data)] = data
-    return bytes(out)
+    return byteswapped(bytes(out)) if swapped else bytes(out)
