@@ -26,6 +26,7 @@ NAMES = {
     Format.GDIFF: ("GDIFF", NOTHING),
     Format.DPS: ("DPS", "the source size"),
     Format.HDIFF: ("HDiffPatch", "the source size"),
+    Format.VPATCH: ("VPatch, NSIS", "MD5 or CRC32 of the source and of the result, per entry"),
     Format.PAT: ("PAT, FireFlower", "the original value of every byte it changes"),
     Format.XDELTA: ("xdelta", "an Adler-32 checksum of every window, when present"),
 }
@@ -34,6 +35,7 @@ EXTRA_EXTENSIONS = {
     Format.BSDIFF43: (".bsdiff",),
     Format.RUP1: (".rup",),
     Format.PMSR: (".mod", ".pmsr"),
+    Format.VPATCH: (".pat",),
 }
 
 

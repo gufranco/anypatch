@@ -89,6 +89,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | PAT，FireFlower | 是，也读 `fc /b` 的输出 | 是，大小不变时 | `.pat` | 每个被修改字节的原值 |
 | DPS | 是，按 `.dps` 扩展名识别，因为该格式没有魔数 | 是 | `.dps` | 源文件大小 |
 | HDiffPatch | HDIFF13 和 HDIFFSF20，无压缩或 zlib、bzip2、LZMA、LZMA2 | HDIFF13，无压缩 | `.hdiff` | 源文件大小 |
+| VPatch、NSIS | MD5 和 CRC32 两种模式、多源文件的每个条目，以及安装程序末尾指针指向的文件头 | 一个 MD5 条目，使用 `--format vpatch` | `.pat` | 每个条目的源文件和结果的 MD5 或 CRC32 |
 | xdelta，VCDIFF | 是 | 是 | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | 补丁带有时，每个窗口的 Adler-32 校验和。读取 xdelta3 的输出，无论无二次压缩、LZMA、DJW 还是 FGK；也读取 open-vcdiff 交错且带校验和的 S 版本，以及 RFC 3284 和 open-vcdiff 两种布局的应用自定义码表 |
 
 格式由内容决定；只有名为 `.zps` 或 `.ip1` 的 IPS 才按 ZPS 读取。每个补丁都单独应用到干净的源文件上，再比较各自改变的字节。向同一字节写入不同值的两个补丁会被拒绝，并列出每个范围和双方的值；相同的写入会合并。格式带有源文件校验和的补丁，用在其他文件上时会被拒绝并给出双方的值；源文件已经包含结果时，会报告为已应用。声称结果大于 1 GiB 且大于源文件的补丁，会在分配任何内存之前被拒绝。

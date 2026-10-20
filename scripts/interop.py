@@ -394,6 +394,12 @@ def exchanges() -> list[Exchange]:
             "bspatch43 {source} {out} {patch}",
         ),
         Exchange(
+            "vpatch",
+            Format.VPATCH,
+            "genpat {source} {target} {patch}",
+            "vpatch-apply {source} {patch} {out}",
+        ),
+        Exchange(
             "javaxdelta",
             Format.GDIFF,
             "java -cp $JAVAXDELTA com.nothome.delta.Delta {source} {target} {patch}",

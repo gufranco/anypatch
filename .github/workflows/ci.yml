@@ -519,6 +519,40 @@ jobs:
           PYTHONPATH: src
         run: python scripts/interop.py --tool hdiffpatch --work "$RUNNER_TEMP/interop"
 
+  vpatch:
+    name: NSIS VPatch and anypatch exchange every boundary patch
+    runs-on: ubuntu-26.04
+    env:
+      NSIS_COMMIT: f0bfe3e0062c57dc1ef90f1d235c7c0bd5a43be4
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Build the reference tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zlib1g-dev
+          cd "$RUNNER_TEMP"
+          git clone --quiet --filter=blob:none --sparse https://github.com/kichik/nsis.git
+          git -C nsis sparse-checkout set Contrib/VPatch/Source
+          git -C nsis checkout --quiet "$NSIS_COMMIT"
+          mkdir -p bin
+          source="$RUNNER_TEMP/nsis/Contrib/VPatch/Source"
+          cc -O2 -c "$source/GenPat/md5.c" -o md5.o
+          c++ -O2 -std=c++11 -o bin/genpat "$source"/GenPat/*.cpp md5.o -lz
+          cc -O2 -std=c99 -Wall -Wno-unused-function -I"$GITHUB_WORKSPACE/scripts/vpatch" \
+            -I"$source/Plugin" -o bin/vpatch-apply "$GITHUB_WORKSPACE/scripts/vpatch/main.c" \
+            "$source/Plugin/apply_patch.c" "$source/Plugin/checksum.c" "$source/Plugin/md5.c"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Exchange the boundary files in both directions
+        env:
+          PYTHONPATH: src
+        run: python scripts/interop.py --tool vpatch --work "$RUNNER_TEMP/interop"
+
   gdiff:
     name: javaxdelta and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04

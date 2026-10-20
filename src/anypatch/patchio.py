@@ -23,6 +23,7 @@ from anypatch.formats import (
     rup1,
     ups,
     vcdiff,
+    vpatch,
     zps,
 )
 
@@ -47,6 +48,7 @@ class Format(StrEnum):
     PAT = "pat"
     DPS = "dps"
     HDIFF = "hdiff"
+    VPATCH = "vpatch"
     XDELTA = "xdelta"
 
 
@@ -89,12 +91,13 @@ FAULTS = (
     pat.PatError,
     dps.DpsError,
     hdiff.HdiffError,
+    vpatch.VpatchError,
     vcdiff.VcdiffError,
     imagesize.ImageSizeError,
 )
 KNOWN = (
     "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, PAT, "
-    "DPS, HDiffPatch or xdelta"
+    "DPS, HDiffPatch, VPatch or xdelta"
 )
 MAGICS = (
     (ups.MAGIC, Format.UPS),
@@ -108,6 +111,7 @@ MAGICS = (
     (bsdiff43.MAGIC, Format.BSDIFF43),
     (gdiff.MAGIC, Format.GDIFF),
     (hdiff.PREFIX, Format.HDIFF),
+    (vpatch.MAGIC, Format.VPATCH),
     (vcdiff.MAGIC, Format.XDELTA),
 )
 APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
@@ -127,6 +131,7 @@ APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
     Format.PAT: pat.apply,
     Format.DPS: dps.apply,
     Format.HDIFF: hdiff.apply,
+    Format.VPATCH: vpatch.apply,
     Format.XDELTA: vcdiff.apply,
 }
 Builder = Callable[[bytes, bytes, str], bytes]
@@ -146,6 +151,7 @@ BUILDERS: dict[Format, Builder] = {
     Format.GDIFF: lambda before, after, _: gdiff.build(before, after),
     Format.PAT: lambda before, after, _: pat.build(before, after),
     Format.HDIFF: lambda before, after, _: hdiff.build(before, after),
+    Format.VPATCH: lambda before, after, _: vpatch.build(before, after),
     Format.DPS: lambda before, after, text: dps.build(before, after, description=text),
     Format.APS_GBA: lambda before, after, _: apsgba.build(before, after),
     Format.PMSR: lambda before, after, _: pmsr.build(before, after),
@@ -188,6 +194,8 @@ def identify(body: bytes, *, name: str) -> Format:
     if body.startswith(apswrite.MAGIC):
         return Format.APS
     found = next((kind for magic, kind in MAGICS if body.startswith(magic)), None)
+    if found is None and vpatch.matches(body):
+        return Format.VPATCH
     if found is None and pat.matches(body):
         return Format.PAT
     if found is None:

@@ -89,6 +89,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | PAT、FireFlower | はい、`fc /b` の出力も | はい、サイズが変わらない場合 | `.pat` | 変更する各バイトの元の値 |
 | DPS | はい、マジックがないため `.dps` 拡張子で判別 | はい | `.dps` | 元のサイズ |
 | HDiffPatch | HDIFF13 と HDIFFSF20。無圧縮、zlib、bzip2、LZMA、LZMA2 | HDIFF13、無圧縮 | `.hdiff` | 元のサイズ |
+| VPatch、NSIS | MD5 と CRC32 の両モード、複数ソースのファイルの全エントリ、インストーラ末尾のポインタが指すヘッダー | MD5 のエントリ 1 つ、`--format vpatch` | `.pat` | エントリごとに元と結果の MD5 または CRC32 |
 | xdelta、VCDIFF | はい | はい | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | パッチが持つ場合、各ウィンドウの Adler-32 チェックサム。xdelta3 の出力を、二次圧縮なし、LZMA、DJW、FGK のいずれでも読み込みます。open-vcdiff のインターリーブとチェックサム付きの S 版、および RFC 3284 と open-vcdiff の両方の形式のアプリケーション定義コード表も読みます |
 
 形式は中身で判定し、`.zps` か `.ip1` という名前の IPS だけを ZPS として読みます。各パッチはクリーンなソースにそれぞれ単独で当て、変わるバイトを比べます。同じバイトに違う値を書く 2 つのパッチは、すべての範囲と両方の値を示して拒否し、同じ値の書き込みは統合します。ソースのチェックサムを持つ形式のパッチは、ほかのファイルには両方の値を示して拒否し、ソースにすでに結果が入っていれば適用済みと報告します。1 GiB とソースのどちらよりも大きい結果を主張するパッチは、何も確保する前に拒否します。

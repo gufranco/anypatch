@@ -136,7 +136,7 @@ class TestReading:
         assert str(raised.value) == (
             "notes.ips: not a patch in any format read here: "
             "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, "
-            "PAT, DPS, HDiffPatch or xdelta"
+            "PAT, DPS, HDiffPatch, VPatch or xdelta"
         )
 
     @pytest.mark.parametrize(
@@ -153,6 +153,8 @@ class TestReading:
             (b"Yay0", Format.PMSR),
             (b"BSDIFF40", Format.BDF),
             (b"\xd6\xc3\xc4\x00", Format.XDELTA),
+            (b"VPAT\x00\x00\x00\x80", Format.VPATCH),
+            (b"MZ stub VPAT\x00\x00\x00\x80\x08\x00\x00\x00", Format.VPATCH),
         ],
     )
     def test_each_format_is_recognised_by_its_contents(self, body, expected, tmp_path):
