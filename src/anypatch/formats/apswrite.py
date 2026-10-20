@@ -25,6 +25,11 @@ MIN_RUN = 4
 RECORD_HEAD = 5
 RUN_MARKER = 0
 SCAN_BLOCK = 0x1000
+RUN_TAIL = 2
+
+
+class ApsError(ValueError):
+    pass
 
 
 def _differing_positions(before: bytes, after: bytes) -> list[int]:
@@ -83,26 +88,76 @@ def _header(before: bytes, description: str) -> bytes:
     return bytes(head)
 
 
+def _changed(before: bytes, after: bytes) -> list[tuple[int, bytes]]:
+    common = min(len(before), len(after))
+    tail = after[common:]
+    spans = differing_spans(before[:common], after[:common])
+    return [*spans, (common, tail)] if tail else spans
+
+
 def build(before: bytes, after: bytes, *, description: str = "") -> bytes:
-    if len(before) != len(after):
-        raise ValueError("both images must be the same length to diff them")
     if len(before) < HEADER_MINIMUM:
         raise ValueError("too short to carry a ROM header, so nothing can be bound")
-    body = b"".join(_records(offset, chunk) for offset, chunk in differing_spans(before, after))
-    return _header(before, description) + body
+    head = bytearray(_header(before, description))
+    struct.pack_into("<I", head, SIZE_OFFSET, len(after))
+    body = b"".join(_records(offset, chunk) for offset, chunk in _changed(before, after))
+    return bytes(head) + body
+
+
+def _binding(image: bytes) -> bytes:
+    cart = (
+        image[ROM_CART_OFFSET : ROM_CART_OFFSET + 2]
+        + image[ROM_COUNTRY_OFFSET : ROM_COUNTRY_OFFSET + 1]
+    )
+    return cart + image[ROM_CRC_OFFSET : ROM_CRC_OFFSET + 8]
+
+
+def _bound(patch: bytes) -> bytes:
+    return patch[CART_OFFSET : CART_OFFSET + 3] + patch[CRC_OFFSET : CRC_OFFSET + 8]
+
+
+def _described(binding: bytes) -> str:
+    crc1, crc2 = struct.unpack_from(">II", binding, 3)
+    code = binding[:3].decode("ascii", "replace")
+    return f"{code} {crc1:08X} {crc2:08X}"
+
+
+def check(before: bytes, patch: bytes) -> None:
+    if len(patch) < RECORDS_OFFSET or not patch.startswith(MAGIC):
+        raise ApsError("not an APS patch: it does not start with an APS10 header")
+    if patch[len(MAGIC)] != TYPE_N64 or patch[len(MAGIC) + 1] != ENCODING_SIMPLE:
+        raise ApsError("an APS patch for another system or encoding; only N64 simple is read")
+    if patch[FORMAT_OFFSET] != FORMAT_NATIVE:
+        raise ApsError("an APS patch for a byte-swapped .v64 dump; this tool reads .z64")
+    if len(before) < HEADER_MINIMUM or _binding(before) != _bound(patch):
+        have = _described(_binding(before)) if len(before) >= HEADER_MINIMUM else "no header"
+        raise ApsError(f"bound to {_described(_bound(patch))}, but this dump is {have}")
+
+
+def _record(patch: bytes, at: int, size: int) -> tuple[int, bytes, int]:
+    if at + RECORD_HEAD > len(patch):
+        raise ApsError(f"the patch ends inside the record at byte {at}")
+    offset, length = struct.unpack_from("<IB", patch, at)
+    data_at = at + RECORD_HEAD
+    if length == RUN_MARKER:
+        if data_at + RUN_TAIL > len(patch):
+            raise ApsError(f"the patch ends inside the run record at byte {at}")
+        data, end = bytes([patch[data_at + 1]]) * patch[data_at], data_at + RUN_TAIL
+    elif data_at + length > len(patch):
+        raise ApsError(f"the patch ends inside the {length}-byte record at byte {at}")
+    else:
+        data, end = patch[data_at : data_at + length], data_at + length
+    if offset + len(data) > size:
+        raise ApsError(f"a record at {offset:#x} writes past the declared size {size:#x}")
+    return offset, data, end
 
 
 def apply(before: bytes, patch: bytes) -> bytes:
-    out = bytearray(before)
+    check(before, patch)
+    size = struct.unpack_from("<I", patch, SIZE_OFFSET)[0]
+    out = bytearray(before[:size].ljust(size, b"\x00"))
     at = RECORDS_OFFSET
-    while at + RECORD_HEAD <= len(patch):
-        offset, size = struct.unpack_from("<IB", patch, at)
-        at += RECORD_HEAD
-        if size == RUN_MARKER:
-            run, value = patch[at], patch[at + 1]
-            at += 2
-            out[offset : offset + run] = bytes([value]) * run
-            continue
-        out[offset : offset + size] = patch[at : at + size]
-        at += size
+    while at < len(patch):
+        offset, data, at = _record(patch, at, size)
+        out[offset : offset + len(data)] = data
     return bytes(out)

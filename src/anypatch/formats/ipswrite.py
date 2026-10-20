@@ -55,32 +55,68 @@ def _records(after: bytes, offset: int, chunk: bytes) -> list[bytes]:
     return records
 
 
+def _changed(before: bytes, after: bytes) -> list[tuple[int, bytes]]:
+    common = min(len(before), len(after))
+    spans = differing_spans(before[:common], after[:common])
+    tail = after[common:]
+    return [*spans, (common, tail)] if tail else spans
+
+
 def build(before: bytes, after: bytes) -> bytes:
-    if len(before) != len(after):
-        raise ValueError("both images must be the same length to diff them")
-    if before[LIMIT:] != after[LIMIT:]:
+    if len(after) > LIMIT or before[LIMIT : len(after)] != after[LIMIT:]:
         raise IpsError(
-            "the images differ at or past 16 MiB, where IPS offsets cannot reach; use the APS patch"
+            "the images differ at or past 16 MiB, where IPS offsets cannot reach; use APS or xdelta"
         )
-    spans = differing_spans(before, after)
+    spans = _changed(before, after)
     body = b"".join(b"".join(_records(after, offset, chunk)) for offset, chunk in spans)
-    return MAGIC + body + END
+    shorter = _offset(len(after)) if len(after) < len(before) else b""
+    return MAGIC + body + END + shorter
+
+
+def _header(patch: bytes, at: int) -> tuple[int, int]:
+    if at + OFFSET_BYTES + SIZE_BYTES > len(patch):
+        raise IpsError(f"the patch ends inside the record at byte {at}")
+    offset = int.from_bytes(patch[at : at + OFFSET_BYTES], "big")
+    size = int.from_bytes(patch[at + OFFSET_BYTES : at + OFFSET_BYTES + SIZE_BYTES], "big")
+    return offset, size
+
+
+def _payload(patch: bytes, at: int, size: int) -> tuple[bytes, int]:
+    if size == RUN_MARKER:
+        if at + RUN_TAIL > len(patch):
+            raise IpsError(f"the patch ends inside the run record at byte {at}")
+        run, value = struct.unpack_from(">HB", patch, at)
+        return bytes([value]) * run, at + RUN_TAIL
+    if at + size > len(patch):
+        raise IpsError(f"the patch ends inside the {size}-byte record at byte {at}")
+    return patch[at : at + size], at + size
+
+
+def _sized(out: bytes, tail: bytes) -> bytes:
+    if not tail:
+        return out
+    if len(tail) != OFFSET_BYTES:
+        raise IpsError(f"{len(tail)} bytes follow EOF, which is neither nothing nor a 3-byte size")
+    return out[: int.from_bytes(tail, "big")]
+
+
+def _parsed(patch: bytes) -> tuple[list[tuple[int, bytes]], bytes]:
+    if not patch.startswith(MAGIC):
+        raise IpsError("not an IPS patch: it does not start with PATCH")
+    records: list[tuple[int, bytes]] = []
+    at = len(MAGIC)
+    while patch[at : at + len(END)] != END:
+        offset, size = _header(patch, at)
+        data, at = _payload(patch, at + OFFSET_BYTES + SIZE_BYTES, size)
+        records = [*records, (offset, data)]
+    return records, patch[at + len(END) :]
 
 
 def apply(before: bytes, patch: bytes) -> bytes:
-    if not patch.startswith(MAGIC):
-        raise IpsError("not an IPS patch: it does not start with PATCH")
+    records, tail = _parsed(patch)
     out = bytearray(before)
-    at = len(MAGIC)
-    while patch[at : at + len(END)] != END:
-        offset = int.from_bytes(patch[at : at + OFFSET_BYTES], "big")
-        size = int.from_bytes(patch[at + OFFSET_BYTES : at + OFFSET_BYTES + SIZE_BYTES], "big")
-        at += OFFSET_BYTES + SIZE_BYTES
-        if size == RUN_MARKER:
-            run, value = struct.unpack_from(">HB", patch, at)
-            out[offset : offset + run] = bytes([value]) * run
-            at += RUN_TAIL
-            continue
-        out[offset : offset + size] = patch[at : at + size]
-        at += size
-    return bytes(out)
+    for offset, data in records:
+        if offset > len(out):
+            out.extend(bytes(offset - len(out)))
+        out[offset : offset + len(data)] = data
+    return _sized(bytes(out), tail)

@@ -53,16 +53,29 @@ class TestTheFileShape:
         # Assert
         assert patch == b"PATCHEOF"
 
-    def test_images_of_different_lengths_are_refused(self):
+    def test_a_longer_target_is_reached_by_writing_past_the_end(self):
         # Arrange
-        before = image()
+        before = image(0x100)
+        after = image(0x100) + bytes(range(0x40))
 
         # Act
-        with pytest.raises(ValueError) as raised:
-            ipswrite.build(before, before + b"\x00")
+        patch = ipswrite.build(before, after)
 
         # Assert
-        assert "same length" in str(raised.value)
+        assert records(patch) == [(0x100, 0x40)]
+        assert ipswrite.apply(before, patch) == after
+
+    def test_a_shorter_target_is_reached_with_the_size_after_eof(self):
+        # Arrange
+        before = image(0x200)
+        after = before[:0x180]
+
+        # Act
+        patch = ipswrite.build(before, after)
+
+        # Assert
+        assert patch == b"PATCHEOF" + bytes([0x00, 0x01, 0x80])
+        assert ipswrite.apply(before, patch) == after
 
 
 class TestWhatThePatchReplays:
@@ -175,3 +188,34 @@ class TestReadingAPatch:
 
         # Assert
         assert "PATCH" in str(raised.value)
+
+    @pytest.mark.parametrize(
+        ("patch", "message"),
+        [
+            (b"PATCH\x00\x00", "ends inside the record"),
+            (b"PATCH\x00\x00\x10\x00\x04ab", "ends inside the 4-byte record"),
+            (b"PATCH\x00\x00\x10\x00\x00\x00", "ends inside the run record"),
+            (b"PATCHEOFxx", "2 bytes follow EOF"),
+        ],
+    )
+    def test_a_damaged_patch_is_refused_with_where_it_broke(self, patch, message):
+        # Arrange
+        before = image()
+
+        # Act
+        with pytest.raises(ipswrite.IpsError) as raised:
+            ipswrite.apply(before, patch)
+
+        # Assert
+        assert message in str(raised.value)
+
+    def test_a_record_past_the_end_pads_the_gap_with_zeros(self):
+        # Arrange
+        before = b"\x11" * 4
+        patch = b"PATCH" + bytes([0, 0, 8, 0, 2]) + b"\xaa\xbb" + b"EOF"
+
+        # Act
+        after = ipswrite.apply(before, patch)
+
+        # Assert
+        assert after == b"\x11" * 4 + bytes(4) + b"\xaa\xbb"

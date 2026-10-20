@@ -163,17 +163,6 @@ class TestWhatThePatchReplays:
 
 
 class TestWhatItRefuses:
-    def test_images_of_different_lengths_cannot_be_diffed(self):
-        # Arrange
-        before = rom()
-
-        # Act
-        with pytest.raises(ValueError) as raised:
-            apswrite.build(before, before + b"\x00")
-
-        # Assert
-        assert "same length" in str(raised.value)
-
     def test_an_image_too_short_to_hold_a_header_is_refused(self):
         # Arrange
         stub = bytes(apswrite.HEADER_MINIMUM - 1)
@@ -184,3 +173,106 @@ class TestWhatItRefuses:
 
         # Assert
         assert "too short" in str(raised.value)
+
+
+def header_byte(patch: bytes, at: int, value: int) -> bytes:
+    out = bytearray(patch)
+    out[at] = value
+    return bytes(out)
+
+
+class TestSizeChanges:
+    def test_a_longer_target_declares_its_size_and_writes_the_tail(self):
+        # Arrange
+        before = rom()
+        after = before + bytes(range(1, 0x21))
+
+        # Act
+        patch = apswrite.build(before, after)
+
+        # Assert
+        assert struct.unpack_from("<I", patch, apswrite.SIZE_OFFSET)[0] == len(after)
+        assert apswrite.apply(before, patch) == after
+
+    def test_a_shorter_target_is_cut_to_the_declared_size(self):
+        # Arrange
+        before = rom(0x200)
+        after = before[:0x180]
+
+        # Act
+        patch = apswrite.build(before, after)
+
+        # Assert
+        assert apswrite.apply(before, patch) == after
+
+
+class TestWhatApplyRefuses:
+    def test_a_patch_bound_to_another_dump_names_both(self):
+        # Arrange
+        before = rom()
+        patch = apswrite.build(before, changed(before, 0x80, 1))
+        other = changed(before, apswrite.ROM_CRC_OFFSET, 0x12345678)
+
+        # Act
+        with pytest.raises(apswrite.ApsError) as raised:
+            apswrite.apply(other, patch)
+
+        # Assert
+        assert (
+            str(raised.value)
+            == "bound to NSE CA12B547 71FA4EE4, but this dump is NSE 12345678 71FA4EE4"
+        )
+
+    def test_a_dump_too_short_for_a_header_is_refused(self):
+        # Arrange
+        before = rom()
+        patch = apswrite.build(before, before)
+
+        # Act
+        with pytest.raises(apswrite.ApsError) as raised:
+            apswrite.apply(bytes(8), patch)
+
+        # Assert
+        assert "this dump is no header" in str(raised.value)
+
+    @pytest.mark.parametrize(
+        ("at", "value", "message"),
+        [
+            (0, ord("X"), "not an APS patch"),
+            (len(apswrite.MAGIC), 0, "another system"),
+            (len(apswrite.MAGIC) + 1, 1, "another system"),
+            (apswrite.FORMAT_OFFSET, apswrite.FORMAT_BYTESWAPPED, "byte-swapped"),
+        ],
+    )
+    def test_a_header_it_cannot_read_is_refused(self, at, value, message):
+        # Arrange
+        before = rom()
+        patch = header_byte(apswrite.build(before, before), at, value)
+
+        # Act
+        with pytest.raises(apswrite.ApsError) as raised:
+            apswrite.apply(before, patch)
+
+        # Assert
+        assert message in str(raised.value)
+
+    @pytest.mark.parametrize(
+        ("tail", "message"),
+        [
+            (b"\x80\x00", "ends inside the record"),
+            (struct.pack("<IB", 0x80, 4) + b"ab", "ends inside the 4-byte record"),
+            (struct.pack("<IB", 0x80, 0) + b"\x05", "ends inside the run record"),
+            (struct.pack("<IB", 0xFE, 4) + b"abcd", "past the declared size"),
+        ],
+    )
+    def test_a_damaged_record_is_refused(self, tail, message):
+        # Arrange
+        before = rom()
+        patch = apswrite.build(before, before) + tail
+
+        # Act
+        with pytest.raises(apswrite.ApsError) as raised:
+            apswrite.apply(before, patch)
+
+        # Assert
+        assert message in str(raised.value)
