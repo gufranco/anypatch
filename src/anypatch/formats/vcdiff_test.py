@@ -4,7 +4,7 @@ import zlib
 
 import pytest
 
-from anypatch.formats import vcdiff
+from anypatch.formats import imagesize, vcdiff
 from anypatch.formats import xdelta_vectors_test_support as vectors
 
 CASES = {case.name: case for case in vectors.cases()}
@@ -200,7 +200,7 @@ class TestRefusals:
             vcdiff.apply(b"", HEADER + window)
 
         # Assert
-        assert "more than its declared size" in str(raised.value)
+        assert "writes past its declared size" in str(raised.value)
 
     def test_a_compressed_section_without_a_secondary_compressor_is_refused(self):
         # Arrange
@@ -299,3 +299,51 @@ class TestWindowEdges:
 
         # Assert
         assert vcdiff.apply(source, patch) == target
+
+
+def sized_window(size: int, inst: bytes, data: bytes) -> bytes:
+    body = (
+        vcdiff.varint(size)
+        + bytes([0])
+        + vcdiff.varint(len(data))
+        + vcdiff.varint(len(inst))
+        + vcdiff.varint(0)
+    )
+    delta = body + data + inst
+    return bytes([0]) + vcdiff.varint(len(delta)) + delta
+
+
+class TestSizesCheckedBeforeWork:
+    def test_a_run_longer_than_its_window_is_refused_before_it_is_produced(self):
+        # Arrange
+        run = bytes([0]) + vcdiff.varint(1 << 40)
+        patch = HEADER + sized_window(4, run, b"\x41")
+
+        # Act
+        with pytest.raises(vcdiff.VcdiffError) as raised:
+            vcdiff.apply(b"", patch)
+
+        # Assert
+        assert "past its declared size 4" in str(raised.value)
+
+    def test_a_window_past_the_ceiling_is_refused_before_it_is_decoded(self):
+        # Arrange
+        patch = HEADER + sized_window(1 << 40, b"", b"")
+
+        # Act
+        with pytest.raises(imagesize.ImageSizeError) as raised:
+            vcdiff.apply(b"", patch)
+
+        # Assert
+        assert "1,099,511,627,776-byte result" in str(raised.value)
+
+    def test_windows_that_add_up_past_the_ceiling_are_refused(self):
+        # Arrange
+        patch = HEADER + plain_window(target=b"ab") + sized_window(imagesize.LIMIT, b"", b"")
+
+        # Act
+        with pytest.raises(imagesize.ImageSizeError) as raised:
+            vcdiff.apply(b"", patch)
+
+        # Assert
+        assert "1,073,741,826-byte result" in str(raised.value)

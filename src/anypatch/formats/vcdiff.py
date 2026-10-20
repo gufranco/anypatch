@@ -5,7 +5,7 @@ import struct
 import zlib
 from dataclasses import dataclass
 
-from anypatch.formats import djw, fgk
+from anypatch.formats import djw, fgk, imagesize
 from anypatch.formats.apswrite import differing_spans
 
 MAGIC = b"\xd6\xc3\xc4"
@@ -177,6 +177,12 @@ def _segment(indicator: int, reader: _Reader, source: bytes, out: bytes) -> byte
 
 
 @dataclass(frozen=True, slots=True)
+class _Room:
+    written: int
+    source: int
+
+
+@dataclass(frozen=True, slots=True)
 class _Window:
     size: int
     data: bytes
@@ -185,10 +191,11 @@ class _Window:
     checksum: int | None
 
 
-def _delta(indicator: int, reader: _Reader, secondary: _Secondary) -> _Window:
+def _delta(indicator: int, reader: _Reader, secondary: _Secondary, room: _Room) -> _Window:
     length = reader.varint()
     start = reader.pos
     size, compressed = reader.varint(), reader.byte()
+    imagesize.check(room.written + size, source=room.source)
     lengths = (reader.varint(), reader.varint(), reader.varint())
     checksum = struct.unpack(">I", reader.take(4))[0] if indicator & VCD_ADLER32 else None
     sections = [reader.take(n) for n in lengths]
@@ -223,14 +230,14 @@ class _Decoder:
 
     def execute(self, half: Half, size: int) -> None:
         kind, _, mode = half
+        if len(self.target) + size > self.window.size:
+            raise VcdiffError(f"an instruction writes past its declared size {self.window.size}")
         if kind == ADD:
             self.target.extend(self.data.take(size))
         elif kind == RUN:
             self.target.extend(bytes([self.data.byte()]) * size)
         else:
             self.copy(mode, size)
-        if len(self.target) > self.window.size:
-            raise VcdiffError(f"a window produced more than its declared size {self.window.size}")
 
     def run(self) -> bytes:
         inst = _Reader(self.window.inst)
@@ -252,7 +259,7 @@ def apply(source: bytes, patch: bytes) -> bytes:
         if indicator & ~(VCD_SOURCE | VCD_TARGET | VCD_ADLER32):
             raise VcdiffError(f"unknown window flags {indicator:#04x}")
         segment = _segment(indicator, reader, source, bytes(out))
-        window = _delta(indicator, reader, secondary)
+        window = _delta(indicator, reader, secondary, _Room(len(out), len(source)))
         target = _Decoder(segment, window).run()
         if window.checksum is not None and zlib.adler32(target) != window.checksum:
             raise VcdiffError(
