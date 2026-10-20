@@ -5,7 +5,7 @@ import struct
 import zlib
 from dataclasses import dataclass
 
-from n64_save_patches import djw
+from n64_save_patches import djw, fgk
 from n64_save_patches.apswrite import differing_spans
 
 MAGIC = b"\xd6\xc3\xc4"
@@ -120,6 +120,7 @@ class _Secondary:
     def __init__(self, kind: int | None) -> None:
         self.kind = kind
         self.streams = {part: lzma.LZMADecompressor(lzma.FORMAT_XZ) for part in (DATA, INST, ADDR)}
+        self.trees = {part: fgk.Decoder() for part in (DATA, INST, ADDR)}
 
     def expand(self, section: int, raw: bytes) -> bytes:
         if self.kind is None:
@@ -131,7 +132,7 @@ class _Secondary:
         payload = raw[reader.pos :]
         try:
             out = self._decoded(section, payload, size)
-        except (djw.DjwError, lzma.LZMAError) as error:
+        except (djw.DjwError, fgk.FgkError, lzma.LZMAError) as error:
             raise VcdiffError(f"a compressed section does not decode: {error}") from error
         if len(out) != size:
             raise VcdiffError(f"a compressed section gave {len(out)} bytes, not {size}")
@@ -140,6 +141,8 @@ class _Secondary:
     def _decoded(self, section: int, payload: bytes, size: int) -> bytes:
         if self.kind == DJW_ID:
             return djw.decode(payload, size)
+        if self.kind == FGK_ID:
+            return self.trees[section].decode(payload, size)
         return self.streams[section].decompress(payload, max_length=size)
 
 
@@ -154,9 +157,7 @@ def _header(reader: _Reader) -> int | None:
     kind = reader.byte() if flags & VCD_SECONDARY else None
     if flags & VCD_CODETABLE:
         raise VcdiffError("a patch with its own code table, which xdelta3 never writes")
-    if kind == FGK_ID:
-        raise VcdiffError("FGK secondary compression, written only by xdelta3 -S fgk, is not read")
-    if kind not in (None, DJW_ID, LZMA_ID):
+    if kind not in (None, DJW_ID, LZMA_ID, FGK_ID):
         raise VcdiffError(f"unknown secondary compressor {kind}")
     if flags & VCD_APPHEADER:
         reader.take(reader.varint())

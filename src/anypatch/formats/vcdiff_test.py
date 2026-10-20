@@ -115,7 +115,6 @@ class TestRefusals:
             (b"PATCHEOF", "not a VCDIFF"),
             (vcdiff.MAGIC + b"\x01\x00", "version"),
             (vcdiff.MAGIC + b"\x00\x02", "code table"),
-            (vcdiff.MAGIC + b"\x00\x01\x10", "FGK"),
             (vcdiff.MAGIC + b"\x00\x01\x07", "secondary compressor 7"),
             (vcdiff.MAGIC + b"\x00\x08", "header flags"),
             (HEADER + b"\x08", "window flags"),
