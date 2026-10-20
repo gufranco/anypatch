@@ -180,6 +180,12 @@ def exchanges() -> list[Exchange]:
             "bspatch {source} {out} {patch}",
         ),
         Exchange(
+            "bsdiff43",
+            Format.BSDIFF43,
+            "bsdiff43 {source} {target} {patch}",
+            "bspatch43 {source} {out} {patch}",
+        ),
+        Exchange(
             "javaxdelta",
             Format.GDIFF,
             "java -cp $JAVAXDELTA com.nothome.delta.Delta {source} {target} {patch}",
@@ -288,7 +294,12 @@ def run(cases: Sequence[boundaries.Boundary], chosen: Sequence[Exchange], work: 
 
 def _arguments(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Exchange boundary patches with reference tools")
-    parser.add_argument("--tool", action="append", default=[], help="tool name prefix to run")
+    parser.add_argument(
+        "--tool",
+        action="append",
+        default=[],
+        help="tool to run; xdelta3 also runs each xdelta3-<coder>",
+    )
     parser.add_argument("--case", action="append", default=[], help="case name prefix to run")
     parser.add_argument("--work", type=Path, required=True)
     return parser.parse_args(argv)
@@ -298,9 +309,13 @@ def _matches(name: str, wanted: Sequence[str]) -> bool:
     return not wanted or any(name.startswith(prefix) for prefix in wanted)
 
 
+def _tool_matches(name: str, wanted: Sequence[str]) -> bool:
+    return not wanted or any(name == tool or name.startswith(f"{tool}-") for tool in wanted)
+
+
 def main(argv: Sequence[str]) -> int:
     options = _arguments(argv)
-    chosen = [one for one in exchanges() if _matches(one.tool, options.tool)]
+    chosen = [one for one in exchanges() if _tool_matches(one.tool, options.tool)]
     cases = [case for case in boundaries.cases() if _matches(case.name, options.case)]
     if not chosen or not cases:
         print(NOTHING)

@@ -21,10 +21,15 @@ NAMES = {
     Format.RUP: ("RUP", "MD5 of the source and of the result, per file entry"),
     Format.PMSR: ("PMSR", "Paper Mario USA 1.0, by size and CRC32"),
     Format.BDF: ("BDF", NOTHING),
+    Format.BSDIFF43: ("BSDIFF43, ENDSLEY", NOTHING),
     Format.GDIFF: ("GDIFF", NOTHING),
     Format.XDELTA: ("xdelta", "an Adler-32 checksum of every window, when present"),
 }
-EXTRA_EXTENSIONS = {Format.APS_GBA: (".aps",), Format.PMSR: (".mod", ".pmsr")}
+EXTRA_EXTENSIONS = {
+    Format.APS_GBA: (".aps",),
+    Format.BSDIFF43: (".bsdiff",),
+    Format.PMSR: (".mod", ".pmsr"),
+}
 
 
 @dataclass(frozen=True, slots=True)

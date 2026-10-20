@@ -279,6 +279,34 @@ jobs:
           PYTHONPATH: src
         run: python scripts/interop.py --tool xdelta3 --work "$RUNNER_TEMP/interop"
 
+  bsdiff43:
+    name: mendsley bsdiff and anypatch exchange every boundary patch
+    runs-on: ubuntu-26.04
+    env:
+      MENDSLEY_COMMIT: b817e9491cf7b8699c8462ef9e2657ca4ccd7667
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Build the reference tool
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libbz2-dev
+          git clone --quiet --filter=blob:none https://github.com/mendsley/bsdiff.git "$RUNNER_TEMP/mendsley"
+          git -C "$RUNNER_TEMP/mendsley" checkout --quiet "$MENDSLEY_COMMIT"
+          mkdir -p "$RUNNER_TEMP/bin"
+          cc -O2 -DBSDIFF_EXECUTABLE -o "$RUNNER_TEMP/bin/bsdiff43" "$RUNNER_TEMP/mendsley/bsdiff.c" -lbz2
+          cc -O2 -DBSPATCH_EXECUTABLE -o "$RUNNER_TEMP/bin/bspatch43" "$RUNNER_TEMP/mendsley/bspatch.c" -lbz2
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Exchange the boundary files in both directions
+        env:
+          PYTHONPATH: src
+        run: python scripts/interop.py --tool bsdiff43 --work "$RUNNER_TEMP/interop"
+
   gdiff:
     name: javaxdelta and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04

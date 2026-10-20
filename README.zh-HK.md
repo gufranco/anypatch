@@ -83,6 +83,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | RUP，NINJA 2.0 | 是 | 是 | `.rup` | 每個檔案項目的來源和結果的 MD5 |
 | PMSR | 是 | 是，用 `--format pmsr` | `.mod`、`.pmsr` | Paper Mario USA 1.0，按大小和 CRC32；讀取時原樣或在 Yay0 之內皆可，寫出為原樣 |
 | BDF，bsdiff 4 | 是 | 是 | `.bdf`、`.bsdiff` | 沒有 |
+| BSDIFF43，ENDSLEY | 是 | 是，用 `--format bsdiff43` | `.bsdiff` | 沒有 |
 | GDIFF | 是 | 是 | `.gdiff`、`.gdf` | 沒有 |
 | xdelta，VCDIFF | 是 | 是 | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | 修補檔附有時，每個視窗的 Adler-32 校驗和。讀取 xdelta3 的輸出，不論沒有二次壓縮、LZMA、DJW 或 FGK |
 

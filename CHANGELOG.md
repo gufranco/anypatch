@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### What's new
 
+- BSDIFF43, the ENDSLEY variant of bsdiff that keeps one bzip2 stream, is read and written with `--format bsdiff43`.
 - GDIFF, the 1997 W3C generic diff format, is read and written with every command form, including 64-bit copy positions.
 - APS is written without the N64 header when the source is not an N64 ROM, and such patches from RomPatcher.js are read. An empty or short source can now be patched.
 - BPS carries `--description` as its metadata, and EBP writes the title, author and description fields EBPatcher and CoilSnake read.

@@ -10,6 +10,7 @@ from anypatch.formats import (
     apswrite,
     bdf,
     bps,
+    bsdiff43,
     gdiff,
     imagesize,
     ipswrite,
@@ -36,6 +37,7 @@ class Format(StrEnum):
     RUP = "rup"
     PMSR = "pmsr"
     BDF = "bdf"
+    BSDIFF43 = "bsdiff43"
     GDIFF = "gdiff"
     XDELTA = "xdelta"
 
@@ -70,11 +72,12 @@ FAULTS = (
     rup.RupError,
     pmsr.PmsrError,
     bdf.BdfError,
+    bsdiff43.Bsdiff43Error,
     gdiff.GdiffError,
     vcdiff.VcdiffError,
     imagesize.ImageSizeError,
 )
-KNOWN = "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, PMSR, BDF, GDIFF or xdelta"
+KNOWN = "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, PMSR, BDF, BSDIFF43, GDIFF or xdelta"
 MAGICS = (
     (ups.MAGIC, Format.UPS),
     (bps.MAGIC, Format.BPS),
@@ -83,6 +86,7 @@ MAGICS = (
     (pmsr.MAGIC, Format.PMSR),
     (pmsr.YAY0, Format.PMSR),
     (bdf.MAGIC, Format.BDF),
+    (bsdiff43.MAGIC, Format.BSDIFF43),
     (gdiff.MAGIC, Format.GDIFF),
     (vcdiff.MAGIC, Format.XDELTA),
 )
@@ -97,6 +101,7 @@ APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
     Format.RUP: rup.apply,
     Format.PMSR: pmsr.apply,
     Format.BDF: bdf.apply,
+    Format.BSDIFF43: bsdiff43.apply,
     Format.GDIFF: gdiff.apply,
     Format.XDELTA: vcdiff.apply,
 }
@@ -112,6 +117,7 @@ BUILDERS: dict[Format, Builder] = {
     Format.PPF: lambda before, after, text: ppf.build(before, after, description=text),
     Format.RUP: lambda before, after, text: rup.build(before, after, description=text),
     Format.BDF: lambda before, after, _: bdf.build(before, after),
+    Format.BSDIFF43: lambda before, after, _: bsdiff43.build(before, after),
     Format.GDIFF: lambda before, after, _: gdiff.build(before, after),
     Format.APS_GBA: lambda before, after, _: apsgba.build(before, after),
     Format.PMSR: lambda before, after, _: pmsr.build(before, after),

@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "interop.py"
 MAKER = '#!/bin/sh\nexec "{python}" -m anypatch make "$1" "$2" -o "$3" --format bdf\n'
@@ -203,3 +205,25 @@ class TestARefusalOnOurSide:
 
         # Assert
         assert found.startswith("expected a refusal naming 'some other reason', got ")
+
+
+class TestChoosingTools:
+    @pytest.mark.parametrize(
+        ("name", "wanted", "expected"),
+        [
+            ("bsdiff", ["bsdiff"], True),
+            ("bsdiff43", ["bsdiff"], False),
+            ("xdelta3-lzma", ["xdelta3"], True),
+            ("romjs", [], True),
+            ("javaxdelta", ["romjs", "bsdiff"], False),
+        ],
+    )
+    def test_a_tool_is_chosen_by_its_name_or_its_family(self, name, wanted, expected):
+        # Arrange
+        chosen = wanted
+
+        # Act
+        found = INTEROP._tool_matches(name, chosen)
+
+        # Assert
+        assert found is expected

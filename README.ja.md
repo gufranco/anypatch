@@ -83,6 +83,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | RUP、NINJA 2.0 | はい | はい | `.rup` | ファイル項目ごとの、元と結果の MD5 |
 | PMSR | はい | はい、`--format pmsr` で | `.mod`、`.pmsr` | Paper Mario USA 1.0。サイズと CRC32 で照合します。読み込みはそのままでも Yay0 の中でも、書き出しはそのまま |
 | BDF、bsdiff 4 | はい | はい | `.bdf`、`.bsdiff` | なし |
+| BSDIFF43、ENDSLEY | はい | はい、`--format bsdiff43` で | `.bsdiff` | なし |
 | GDIFF | はい | はい | `.gdiff`、`.gdf` | なし |
 | xdelta、VCDIFF | はい | はい | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | パッチが持つ場合、各ウィンドウの Adler-32 チェックサム。xdelta3 の出力を、二次圧縮なし、LZMA、DJW、FGK のいずれでも読み込みます |
 
