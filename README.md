@@ -80,7 +80,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | UPS | yes | yes | `.ups` | CRC32 of the source and of the result |
 | BPS | yes | yes | `.bps` | CRC32 of the source and of the result |
 | PPF 1.0, 2.0, 3.0 | yes | as 3.0 with undo data | `.ppf` | PPF 2.0 source size and block check; PPF 3.0 block check and undo data |
-| RUP, NINJA 2.0 | yes | yes | `.rup` | MD5 of the source and of the result, per file entry |
+| RUP, NINJA 2.0 | yes | yes | `.rup` | MD5 of the source and of the result, per file entry, taken after NINJA's conversion for the entry's ROM type: headers off, layouts undone |
 | PMSR | yes | yes, with `--format pmsr` | `.mod`, `.pmsr` | Paper Mario USA 1.0, by size and CRC32; read plain or inside Yay0, written plain |
 | BDF, bsdiff 4 | yes | yes | `.bdf`, `.bsdiff` | Nothing |
 | BSDIFF43, ENDSLEY | yes | yes, with `--format bsdiff43` | `.bsdiff` | Nothing |

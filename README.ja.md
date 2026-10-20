@@ -80,7 +80,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | UPS | はい | はい | `.ups` | 元と結果の CRC32 |
 | BPS | はい | はい | `.bps` | 元と結果の CRC32 |
 | PPF 1.0、2.0、3.0 | はい | 元に戻すためのデータ付きの 3.0 として | `.ppf` | PPF 2.0 は元のサイズとブロックチェック、PPF 3.0 はブロックチェックと元に戻すためのデータ |
-| RUP、NINJA 2.0 | はい | はい | `.rup` | ファイル項目ごとの、元と結果の MD5 |
+| RUP、NINJA 2.0 | はい | はい | `.rup` | ファイル項目ごとの、元と結果の MD5。項目の ROM 種別に応じて NINJA と同じ変換をしてから計算します。ヘッダを外し、並びを元に戻します |
 | PMSR | はい | はい、`--format pmsr` で | `.mod`、`.pmsr` | Paper Mario USA 1.0。サイズと CRC32 で照合します。読み込みはそのままでも Yay0 の中でも、書き出しはそのまま |
 | BDF、bsdiff 4 | はい | はい | `.bdf`、`.bsdiff` | なし |
 | BSDIFF43、ENDSLEY | はい | はい、`--format bsdiff43` で | `.bsdiff` | なし |

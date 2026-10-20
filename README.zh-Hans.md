@@ -80,7 +80,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | UPS | 是 | 是 | `.ups` | 源文件和结果的 CRC32 |
 | BPS | 是 | 是 | `.bps` | 源文件和结果的 CRC32 |
 | PPF 1.0、2.0、3.0 | 是 | 写成带撤销数据的 3.0 | `.ppf` | PPF 2.0 的源文件大小和块校验；PPF 3.0 的块校验和撤销数据 |
-| RUP，NINJA 2.0 | 是 | 是 | `.rup` | 每个文件条目的源文件和结果的 MD5 |
+| RUP，NINJA 2.0 | 是 | 是 | `.rup` | 每个文件条目的源文件和结果的 MD5，按条目的 ROM 类型先做与 NINJA 相同的转换再计算：去掉文件头，还原排列 |
 | PMSR | 是 | 是，用 `--format pmsr` | `.mod`、`.pmsr` | Paper Mario USA 1.0，按大小和 CRC32；读取时原样或在 Yay0 之中均可，写出为原样 |
 | BDF，bsdiff 4 | 是 | 是 | `.bdf`、`.bsdiff` | 无 |
 | BSDIFF43，ENDSLEY | 是 | 是，用 `--format bsdiff43` | `.bsdiff` | 无 |
