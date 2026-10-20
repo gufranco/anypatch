@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import binascii
 import struct
 from collections.abc import Callable
 
@@ -28,15 +27,8 @@ def _round_trip(kind: Format) -> bool:
     return api.apply(BASE, [patch]).image == AFTER
 
 
-def _crc16(data: bytes) -> int:
-    return binascii.crc_hqx(data, 0xFFFF)
-
-
 def _gba() -> bool:
-    record = struct.pack("<IHH", 0, _crc16(GBA_SOURCE), _crc16(GBA_TARGET))
-    xor = bytes(a ^ b for a, b in zip(GBA_SOURCE, GBA_TARGET, strict=True))
-    patch = apsgba.MAGIC + struct.pack("<II", GBA_BLOCK, GBA_BLOCK) + record + xor
-    return apsgba.apply(GBA_SOURCE, patch) == GBA_TARGET
+    return apsgba.apply(GBA_SOURCE, apsgba.build(GBA_SOURCE, GBA_TARGET)) == GBA_TARGET
 
 
 def _star_rod() -> bool:
