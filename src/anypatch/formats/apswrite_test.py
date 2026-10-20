@@ -185,17 +185,112 @@ class TestWhatThePatchReplays:
         assert len(patch) == apswrite.RECORDS_OFFSET
 
 
-class TestWhatItRefuses:
-    def test_an_image_too_short_to_hold_a_header_is_refused(self):
+def generic_patch(size: int, records: bytes, text: bytes = b"") -> bytes:
+    description = text.ljust(apswrite.DESCRIPTION_LENGTH)
+    head = apswrite.MAGIC + bytes([apswrite.TYPE_GENERIC, apswrite.ENCODING_SIMPLE])
+    return head + description + struct.pack("<I", size) + records
+
+
+class TestPatchesForFilesThatAreNotN64Roms:
+    def test_a_source_without_the_n64_magic_gets_the_header_with_no_binding(self):
         # Arrange
-        stub = bytes(apswrite.HEADER_MINIMUM - 1)
+        before = bytes(range(256)) * 4
 
         # Act
-        with pytest.raises(ValueError) as raised:
-            apswrite.build(stub, stub)
+        patch = apswrite.build(before, before)
 
         # Assert
-        assert "too short" in str(raised.value)
+        assert patch == generic_patch(len(before), b"")
+
+    def test_an_empty_source_can_be_grown(self):
+        # Arrange
+        before = b""
+
+        # Act
+        patch = apswrite.build(before, b"grown")
+
+        # Assert
+        assert patch == generic_patch(5, struct.pack("<IB", 0, 5) + b"grown")
+        assert apswrite.apply(before, patch) == b"grown"
+
+    def test_a_patch_with_no_header_written_by_another_tool_applies_to_any_source(self):
+        # Arrange
+        patch = generic_patch(
+            6, struct.pack("<IB", 1, 2) + b"XY" + struct.pack("<IBBB", 4, 0, 0x5A, 2), b"elsewhere"
+        )
+
+        # Act
+        result = apswrite.apply(b"abcdef", patch)
+
+        # Assert
+        assert result == b"aXYdZZ"
+
+    def test_an_n64_rom_can_still_be_written_without_a_binding_when_asked(self):
+        # Arrange
+        before = rom()
+
+        # Act
+        patch = apswrite.build(before, before, bound=False)
+
+        # Assert
+        assert patch == generic_patch(len(before), b"")
+
+
+class TestATruncatedN64Header:
+    def test_it_is_refused_before_any_field_is_read(self):
+        # Arrange
+        before = rom()
+        patch = apswrite.build(before, before)[: apswrite.RECORDS_OFFSET - 1]
+
+        # Act
+        with pytest.raises(apswrite.ApsError) as raised:
+            apswrite.apply(before, patch)
+
+        # Assert
+        assert str(raised.value) == "not an APS patch: it ends inside its N64 header"
+
+
+class TestReadableShapes:
+    def test_a_built_patch_is_well_formed(self):
+        # Arrange
+        before = rom()
+
+        # Act
+        shaped = apswrite.wellformed(apswrite.build(before, changed(before, 0x80, 7)))
+
+        # Assert
+        assert shaped is True
+
+    @pytest.mark.parametrize(
+        "patch",
+        [
+            b"APS1",
+            generic_patch(4, b"")[:-1],
+            generic_patch(4, b"\x00\x00"),
+            generic_patch(4, struct.pack("<IB", 0, 9) + b"ab"),
+            generic_patch(4, struct.pack("<IB", 0, 0) + b"\x01"),
+            apswrite.MAGIC + bytes([2, 0]) + bytes(80),
+            apswrite.MAGIC + bytes([0, 1]) + bytes(80),
+        ],
+        ids=[
+            "no-header",
+            "short-size",
+            "short-record",
+            "short-literal",
+            "short-run",
+            "type-2",
+            "encoding-1",
+        ],
+    )
+    def test_a_header_or_record_that_does_not_fit_is_not(self, patch):
+        # Arrange
+        data = patch
+
+        # Act
+        shaped = apswrite.wellformed(data)
+
+        # Assert
+        assert shaped is False
 
 
 def header_byte(patch: bytes, at: int, value: int) -> bytes:
@@ -262,8 +357,8 @@ class TestWhatApplyRefuses:
         ("at", "value", "message"),
         [
             (0, ord("X"), "not an APS patch"),
-            (len(apswrite.MAGIC), 0, "another system"),
-            (len(apswrite.MAGIC) + 1, 1, "another system"),
+            (len(apswrite.MAGIC), 2, "header type 2; only 0, no header, and 1, N64, are read"),
+            (len(apswrite.MAGIC) + 1, 1, "encoding 1; only 0, simple, is read"),
             (apswrite.FORMAT_OFFSET, 7, "order byte 7"),
         ],
     )
@@ -302,7 +397,8 @@ class TestWhatApplyRefuses:
 
 
 def swapped_patch(before: bytes, after: bytes) -> bytes:
-    patch = bytearray(apswrite.build(apswrite.byteswapped(before), apswrite.byteswapped(after)))
+    swapped = (apswrite.byteswapped(before), apswrite.byteswapped(after))
+    patch = bytearray(apswrite.build(*swapped, bound=True))
     patch[apswrite.FORMAT_OFFSET] = apswrite.FORMAT_BYTESWAPPED
     patch[apswrite.CART_OFFSET : apswrite.CART_OFFSET + 2] = before[
         apswrite.ROM_CART_OFFSET : apswrite.ROM_CART_OFFSET + 2

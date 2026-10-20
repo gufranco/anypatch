@@ -46,12 +46,26 @@ class TestTheChecksum:
         assert found == 0x29B1
 
 
+def n64_patch_of_length(length: int) -> bytes:
+    head = b"APS10" + bytes([0, 0]) + bytes(50) + struct.pack("<I", 255)
+    room = length - len(head)
+    full, rest = divmod(room, 5 + 255)
+    records = (struct.pack("<IB", 0, 255) + bytes(255)) * full
+    return head + records + struct.pack("<IB", 0, rest - 5) + bytes(rest - 5)
+
+
+def gba_patch_whose_size_starts_with_ascii_zero() -> bytes:
+    before = bytes(0x10030)
+    return apsgba.build(before, b"\x01" + before[1:])
+
+
 class TestDetecting:
     @pytest.mark.parametrize(
         ("patch", "expected"),
         [
             (PATCH, True),
-            (b"APS10" + bytes(len(PATCH) - 5), False),
+            (n64_patch_of_length(len(PATCH)), False),
+            (gba_patch_whose_size_starts_with_ascii_zero(), True),
             (PATCH[:-1], False),
             (b"APS1" + bytes(8), False),
         ],
@@ -205,3 +219,47 @@ class TestWriting:
         assert (
             str(raised.value) == "the files are identical, and an APS for GBA patch needs a record"
         )
+
+
+def unpadded_patch(before: bytes, after: bytes, at: int) -> bytes:
+    xor = bytes(x ^ y for x, y in zip(block(before, at), block(after, at), strict=True))
+    crcs = struct.pack("<HH", crc16(before[at : at + BLOCK]), crc16(after[at : at + BLOCK]))
+    record = struct.pack("<I", at) + crcs + xor
+    return b"APS1" + struct.pack("<II", len(before), len(after)) + record
+
+
+class TestAPartialLastBlock:
+    def test_crcs_over_only_the_bytes_present_are_accepted_as_rompatcher_js_checks_them(self):
+        # Arrange
+        before = SOURCE
+        after = edited(before, len(before) - 1, b"\x01")
+        patch = unpadded_patch(before, after, BLOCK)
+
+        # Act
+        result = apsgba.apply(before, patch)
+
+        # Assert
+        assert result == after
+
+    def test_crcs_over_the_zero_padded_block_are_accepted_as_unipatcher_checks_them(self):
+        # Arrange
+        before = SOURCE
+        after = edited(before, len(before) - 1, b"\x01")
+        patch = patch_for(before, after, [BLOCK])
+
+        # Act
+        result = apsgba.apply(before, patch)
+
+        # Assert
+        assert result == after
+
+    def test_a_dump_already_carrying_an_unpadded_patch_comes_back_unchanged(self):
+        # Arrange
+        after = edited(SOURCE, len(SOURCE) - 1, b"\x01")
+        patch = unpadded_patch(SOURCE, after, BLOCK)
+
+        # Act
+        result = apsgba.apply(after, patch)
+
+        # Assert
+        assert result == after

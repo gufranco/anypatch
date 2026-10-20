@@ -4,11 +4,10 @@ import binascii
 import struct
 from dataclasses import dataclass
 
-from anypatch.formats import imagesize
+from anypatch.formats import apswrite, imagesize
 from anypatch.formats.ups import xor
 
 MAGIC = b"APS1"
-N64_MAGIC = b"APS10"
 HEADER = 12
 BLOCK = 0x10000
 RECORD_HEAD = 8
@@ -35,7 +34,7 @@ def crc16(data: bytes) -> int:
 
 def matches(patch: bytes) -> bool:
     shaped = len(patch) >= HEADER + RECORD and (len(patch) - HEADER) % RECORD == 0
-    return patch.startswith(MAGIC) and not patch.startswith(N64_MAGIC) and shaped
+    return patch.startswith(MAGIC) and shaped and not apswrite.wellformed(patch)
 
 
 def _record(patch: bytes, at: int) -> Record:
@@ -55,21 +54,30 @@ def _block(data: bytes | bytearray, at: int) -> bytes:
     return bytes(data[at : at + BLOCK]).ljust(BLOCK, b"\x00")
 
 
+def _present(image: bytes, size: int, at: int) -> bytes:
+    return image[at : max(at, min(at + BLOCK, size))]
+
+
+def _fits(block: bytes, present: bytes, expected: int) -> bool:
+    return expected in (crc16(block), crc16(present))
+
+
 def _carried(before: bytes, target_size: int, records: list[Record]) -> bool:
     return len(before) == target_size and all(
-        crc16(_block(before, one.offset)) == one.target_crc for one in records
+        _fits(_block(before, one.offset), _present(before, target_size, one.offset), one.target_crc)
+        for one in records
     )
 
 
-def _patched(before: bytes, one: Record) -> bytes:
+def _patched(before: bytes, target_size: int, one: Record) -> bytes:
     original = _block(before, one.offset)
-    if crc16(original) != one.source_crc:
+    if not _fits(original, _present(before, len(before), one.offset), one.source_crc):
         raise ApsGbaError(
             f"the block at 0x{one.offset:X} has CRC16 {crc16(original):04X}; "
             f"the patch expects {one.source_crc:04X}"
         )
     result = xor(original, one.xor)
-    if crc16(result) != one.target_crc:
+    if not _fits(result, _present(result, target_size - one.offset, 0), one.target_crc):
         raise ApsGbaError(
             f"the patched block at 0x{one.offset:X} has CRC16 {crc16(result):04X}; "
             f"the patch expects {one.target_crc:04X}"
@@ -89,7 +97,7 @@ def apply(before: bytes, patch: bytes) -> bytes:
     imagesize.check(size, source=len(before))
     out = bytearray(before.ljust(size, b"\x00"))
     for one in records:
-        out[one.offset : one.offset + BLOCK] = _patched(before, one)
+        out[one.offset : one.offset + BLOCK] = _patched(before, target_size, one)
     return bytes(out[:target_size])
 
 

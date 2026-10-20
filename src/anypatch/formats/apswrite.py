@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import struct
 
+from anypatch.formats import imagesize
+
 MAGIC = b"APS10"
+TYPE_GENERIC = 0
 TYPE_N64 = 1
+TYPES = (TYPE_GENERIC, TYPE_N64)
+N64_ROM_MAGIC = b"\x80\x37\x12\x40"
 ENCODING_SIMPLE = 0
 DESCRIPTION_OFFSET = 0x07
 DESCRIPTION_LENGTH = 50
@@ -16,6 +21,8 @@ COUNTRY_OFFSET = 0x3C
 CRC_OFFSET = 0x3D
 SIZE_OFFSET = 0x4A
 RECORDS_OFFSET = 0x4E
+GENERIC_SIZE_OFFSET = 0x39
+GENERIC_RECORDS_OFFSET = 0x3D
 
 HEADER_MINIMUM = 0x40
 ROM_CRC_OFFSET = 0x10
@@ -73,14 +80,16 @@ def _records(offset: int, chunk: bytes) -> bytes:
     return bytes(out)
 
 
+def _generic_header(description: str, size: int) -> bytes:
+    text = description.encode("ascii", "replace")[:DESCRIPTION_LENGTH].ljust(DESCRIPTION_LENGTH)
+    head = MAGIC + bytes([TYPE_GENERIC, ENCODING_SIMPLE]) + text
+    return head + struct.pack("<I", size)
+
+
 def _header(before: bytes, description: str) -> bytes:
     head = bytearray(RECORDS_OFFSET)
-    head[0 : len(MAGIC)] = MAGIC
+    head[:FORMAT_OFFSET] = _generic_header(description, 0)[:FORMAT_OFFSET]
     head[len(MAGIC)] = TYPE_N64
-    head[len(MAGIC) + 1] = ENCODING_SIMPLE
-    text = description.encode("ascii", "replace")[:DESCRIPTION_LENGTH]
-    end = DESCRIPTION_OFFSET + DESCRIPTION_LENGTH
-    head[DESCRIPTION_OFFSET:end] = text.ljust(DESCRIPTION_LENGTH)
     head[FORMAT_OFFSET] = FORMAT_NATIVE
     head[CART_OFFSET : CART_OFFSET + 2] = before[ROM_CART_OFFSET : ROM_CART_OFFSET + 2]
     head[COUNTRY_OFFSET] = before[ROM_COUNTRY_OFFSET]
@@ -96,13 +105,27 @@ def _changed(before: bytes, after: bytes) -> list[tuple[int, bytes]]:
     return [*spans, (common, tail)] if tail else spans
 
 
-def build(before: bytes, after: bytes, *, description: str = "") -> bytes:
-    if len(before) < HEADER_MINIMUM:
-        raise ValueError("too short to carry a ROM header, so nothing can be bound")
+def _is_n64_rom(image: bytes) -> bool:
+    return len(image) >= HEADER_MINIMUM and image.startswith(N64_ROM_MAGIC)
+
+
+def _bound_header(before: bytes, after: bytes, description: str) -> bytes:
     head = bytearray(_header(before, description))
     struct.pack_into("<I", head, SIZE_OFFSET, len(after))
+    return bytes(head)
+
+
+def build(
+    before: bytes, after: bytes, *, description: str = "", bound: bool | None = None
+) -> bytes:
+    binds = _is_n64_rom(before) if bound is None else bound
+    head = (
+        _bound_header(before, after, description)
+        if binds
+        else _generic_header(description, len(after))
+    )
     body = b"".join(_records(offset, chunk) for offset, chunk in _changed(before, after))
-    return bytes(head) + body
+    return head + body
 
 
 def _binding(image: bytes) -> bytes:
@@ -123,11 +146,27 @@ def _described(binding: bytes) -> str:
     return f"{code} {crc1:08X} {crc2:08X}"
 
 
-def check(before: bytes, patch: bytes) -> None:
-    if len(patch) < RECORDS_OFFSET or not patch.startswith(MAGIC):
+def _layout(patch: bytes) -> tuple[int, int]:
+    if len(patch) < GENERIC_RECORDS_OFFSET or not patch.startswith(MAGIC):
         raise ApsError("not an APS patch: it does not start with an APS10 header")
-    if patch[len(MAGIC)] != TYPE_N64 or patch[len(MAGIC) + 1] != ENCODING_SIMPLE:
-        raise ApsError("an APS patch for another system or encoding; only N64 simple is read")
+    kind, encoding = patch[len(MAGIC)], patch[len(MAGIC) + 1]
+    if kind not in TYPES:
+        raise ApsError(
+            f"an APS patch with header type {kind}; only 0, no header, and 1, N64, are read"
+        )
+    if encoding != ENCODING_SIMPLE:
+        raise ApsError(f"an APS patch with encoding {encoding}; only 0, simple, is read")
+    if kind == TYPE_GENERIC:
+        return GENERIC_SIZE_OFFSET, GENERIC_RECORDS_OFFSET
+    if len(patch) < RECORDS_OFFSET:
+        raise ApsError("not an APS patch: it ends inside its N64 header")
+    return SIZE_OFFSET, RECORDS_OFFSET
+
+
+def check(before: bytes, patch: bytes) -> None:
+    _layout(patch)
+    if patch[len(MAGIC)] == TYPE_GENERIC:
+        return
     if patch[FORMAT_OFFSET] not in ORDERS:
         raise ApsError(
             f"an APS patch with order byte {patch[FORMAT_OFFSET]}; "
@@ -165,13 +204,25 @@ def byteswapped(data: bytes) -> bytes:
     return bytes(out)
 
 
+def wellformed(patch: bytes) -> bool:
+    try:
+        size_at, at = _layout(patch)
+        size = struct.unpack_from("<I", patch, size_at)[0]
+        while at < len(patch):
+            at = _record(patch, at, size)[2]
+    except ApsError:
+        return False
+    return True
+
+
 def apply(before: bytes, patch: bytes) -> bytes:
     check(before, patch)
-    swapped = patch[FORMAT_OFFSET] == FORMAT_BYTESWAPPED
+    size_at, at = _layout(patch)
+    swapped = patch[len(MAGIC)] == TYPE_N64 and patch[FORMAT_OFFSET] == FORMAT_BYTESWAPPED
     image = byteswapped(before) if swapped else before
-    size = struct.unpack_from("<I", patch, SIZE_OFFSET)[0]
+    size = struct.unpack_from("<I", patch, size_at)[0]
+    imagesize.check(size, source=len(before))
     out = bytearray(image[:size].ljust(size, b"\x00"))
-    at = RECORDS_OFFSET
     while at < len(patch):
         offset, data, at = _record(patch, at, size)
         out[offset : offset + len(data)] = data
