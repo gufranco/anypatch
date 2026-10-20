@@ -1,0 +1,102 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "anypatch"
+dynamic = ["version"]
+description = "Read, write, merge and convert binary patches in every documented format"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE", "NOTICE.md"]
+authors = [{ name = "Gustavo Franco" }]
+keywords = ["patch", "delta", "ips", "bps", "ups", "xdelta", "vcdiff", "ppf", "bsdiff", "romhacking"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: System :: Archiving",
+  "Topic :: Utilities",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+cli = ["typer>=0.19.0"]
+
+[project.urls]
+Homepage = "https://github.com/gufranco/anypatch"
+Issues = "https://github.com/gufranco/anypatch/issues"
+
+[project.scripts]
+anypatch = "anypatch.entry:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4.0",
+  "pytest-cov>=7.0.0",
+  "ruff>=0.14.0",
+  "mypy>=1.18.2",
+  "typer>=0.19.0",
+]
+
+[tool.hatch.version]
+path = "src/anypatch/version.py"
+pattern = "^VERSION = \"(?P<version>[^\"]+)\"$"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/anypatch"]
+exclude = ["*_test.py", "*_test_support.py", "conftest.py"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/anypatch", "tests", "README.md", "LICENSE", "NOTICE.md", "pyproject.toml", "uv.lock"]
+
+[tool.pytest.ini_options]
+testpaths = ["src", "tests"]
+addopts = "-q --strict-markers --strict-config"
+pythonpath = ["src"]
+
+[tool.coverage.run]
+branch = true
+source = ["src/anypatch"]
+omit = ["*_test.py", "*/conftest.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_also = ['if __name__ == "__main__":', "if TYPE_CHECKING:"]
+fail_under = 100
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "RET", "PTH", "RUF"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+warn_unreachable = true
+warn_no_return = true
+strict_equality = true
+extra_checks = true
+enable_error_code = [
+  "explicit-override",
+  "ignore-without-code",
+  "possibly-undefined",
+  "redundant-expr",
+  "truthy-bool",
+  "truthy-iterable",
+  "unused-awaitable",
+]
+files = ["src/anypatch"]
+exclude = "(_test|conftest)\\.py$"

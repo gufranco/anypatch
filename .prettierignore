@@ -1,0 +1,9 @@
+node_modules/
+dist/
+sbom.json
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+uv.lock
+pnpm-lock.yaml

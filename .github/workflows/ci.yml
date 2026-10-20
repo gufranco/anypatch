@@ -1,0 +1,260 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  commits:
+    name: Commit subjects
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Every new commit follows the convention the release reads
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ ${EVENT} == pull_request ]]; then
+            range="${PR_BASE}..${PR_HEAD}"
+          elif [[ -z ${BEFORE} || ${BEFORE} == 0000000000000000000000000000000000000000 ]]; then
+            range="${AFTER}~1..${AFTER}"
+          elif git merge-base --is-ancestor "${BEFORE}" "${AFTER}" 2>/dev/null; then
+            range="${BEFORE}..${AFTER}"
+          else
+            range="${AFTER}~1..${AFTER}"
+          fi
+          bash scripts/check-commits.sh --range "${range}"
+
+  lint:
+    name: Format and lint
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Install
+        run: uv sync --frozen --python "${PYTHON_VERSION}"
+
+      - name: Format
+        run: uv run ruff format --check .
+
+      - name: Lint
+        run: uv run ruff check --output-format=github .
+
+      - name: Lint the workflows
+        uses: raven-actions/actionlint@v2
+
+      - name: Lint the shell scripts and hooks
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck yamllint
+          shellcheck --severity=style --shell=bash scripts/*.sh .githooks/*
+          yamllint -c .yamllint.yml .github
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install the formatter
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Every JSON and YAML file is formatted
+        run: pnpm run format:check
+
+  types:
+    name: Types
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Install
+        run: uv sync --frozen --python "${PYTHON_VERSION}"
+
+      - name: Every annotation has to hold
+        run: uv run mypy
+
+  test:
+    name: ${{ matrix.label }}, Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-26.04, python: "3.11", label: Linux x86_64 }
+          - { os: ubuntu-26.04, python: "3.12", label: Linux x86_64 }
+          - { os: ubuntu-26.04, python: "3.13", label: Linux x86_64 }
+          - { os: ubuntu-26.04, python: "3.14", label: Linux x86_64 }
+          - { os: ubuntu-24.04-arm, python: "3.14", label: Linux arm64 }
+          - { os: macos-15-intel, python: "3.14", label: macOS Intel }
+          - { os: macos-latest, python: "3.14", label: macOS Apple silicon }
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Install
+        run: uv sync --frozen --python "${{ matrix.python }}"
+
+      - name: The suite, against nothing but the repository
+        run: uv run pytest -q -p no:randomly
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Install
+        run: uv sync --frozen --python "${PYTHON_VERSION}"
+
+      - name: Coverage clears the gate in pyproject.toml
+        run: uv run pytest -q -p no:randomly --cov --cov-report=term-missing
+
+  library:
+    name: The library needs nothing outside the standard library
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install it without the cli extra
+        run: |
+          python -m venv .bare
+          .bare/bin/pip install --quiet --disable-pip-version-check .
+
+      - name: The library imports and runs, and the command says how to get the cli extra
+        run: |
+          set -euo pipefail
+          .bare/bin/python -c "from anypatch import doctor; assert doctor.diagnose().healthy"
+          if .bare/bin/python -c "import typer" 2>/dev/null; then
+            echo "::error title=Typer leaked::the library install pulled in typer"
+            exit 1
+          fi
+          set +e
+          message=$(.bare/bin/anypatch doctor 2>&1)
+          code=$?
+          set -e
+          echo "${message}"
+          if [[ ${code} != 1 || ${message} != *"cli extra"* ]]; then
+            echo "::error title=No hint::without the extra the command must exit 1 and name the extra"
+            exit 1
+          fi
+
+  installed:
+    name: Installed on ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-26.04, label: Linux x86_64 }
+          - { os: ubuntu-24.04-arm, label: Linux arm64 }
+          - { os: macos-15-intel, label: macOS Intel }
+          - { os: macos-latest, label: macOS Apple silicon }
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install it the way a user would, with the command line
+        run: python -m pip install --disable-pip-version-check ".[cli]"
+
+      - name: The command line runs and the installation is healthy
+        run: |
+          anypatch --version
+          anypatch doctor
+          anypatch doctor --json
+
+  formula:
+    name: Homebrew formula
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Style
+        run: brew style Formula/anypatch.rb
+
+      - name: Install it from a tarball built out of git, and run its test
+        run: |
+          set -euo pipefail
+          work=$(mktemp -d)
+          git archive --format=tar.gz --prefix=anypatch/ -o "${work}/src.tar.gz" HEAD
+          checksum=$(shasum -a 256 "${work}/src.tar.gz" | awk '{print $1}')
+          brew tap-new gufranco/anypatch-ci --no-git
+          tap=$(brew --repository gufranco/anypatch-ci)
+          mkdir -p "${tap}/Formula"
+          python3 - "${work}" "${checksum}" "${tap}/Formula/anypatch.rb" <<'PATCH'
+          import re
+          import sys
+          from pathlib import Path
+
+          work, checksum, target = sys.argv[1], sys.argv[2], Path(sys.argv[3])
+          text = Path("Formula/anypatch.rb").read_text()
+          text = re.sub(r'url "[^"]+"', f'url "file://{work}/src.tar.gz"', text, count=1)
+          text = re.sub(r'sha256 "[0-9a-f]{64}"', f'sha256 "{checksum}"', text, count=1)
+          version = Path("src/anypatch/version.py").read_text().split('"')[1]
+          text = text.replace('  license "MIT"', f'  version "{version}"\n  license "MIT"', 1)
+          target.write_text(text)
+          PATCH
+          brew install --build-from-source gufranco/anypatch-ci/anypatch
+          brew test gufranco/anypatch-ci/anypatch
+
+  distribution:
+    name: The wheel carries the library and nothing else
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Build it
+        run: uv build --wheel
+
+      - name: No test or test support file ships
+        run: |
+          python3 - <<'CHECK'
+          import sys
+          import zipfile
+          from pathlib import Path
+
+          wheel = next(Path("dist").glob("*.whl"))
+          names = zipfile.ZipFile(wheel).namelist()
+          shipped = [name for name in names if name.endswith(("_test.py", "_test_support.py", "conftest.py"))]
+          print(f"{len(names)} files in {wheel.name}")
+          if shipped:
+              print(f"::error title=Tests in the wheel::{', '.join(shipped)}")
+              sys.exit(1)
+          CHECK

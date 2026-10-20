@@ -1,0 +1,41 @@
+name: Something does not work
+description: A command failed, a patch applied wrongly, or a patch was refused that should not have been.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If the patch or the file it applies to is copyrighted, do not attach it. Its SHA-256
+        identifies it without sending it, and a synthetic pair that reproduces the problem is better still.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command you ran and what it printed. Paste the output rather than describing it.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: input
+    id: format
+    attributes:
+      label: Patch format and the program that wrote it
+      placeholder: BPS written by Floating IPS 1.31
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of anypatch doctor
+      render: shell
+    validations:
+      required: true

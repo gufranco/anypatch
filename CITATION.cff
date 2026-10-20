@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+title: anypatch
+message: If you use this software, please cite it as below.
+type: software
+authors:
+  - given-names: Gustavo
+    family-names: Franco
+    alias: gufranco
+repository-code: https://github.com/gufranco/anypatch
+abstract: Read, write, merge and convert binary patches in every documented format
+keywords:
+  - binary-patch
+  - delta
+  - ips
+  - bps
+  - xdelta
+  - romhacking
+license: MIT
