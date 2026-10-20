@@ -130,18 +130,18 @@ def format_of(path: str | Path) -> Format:
     return found
 
 
-def _detected(path: Path, body: bytes) -> Format:
+def identify(body: bytes, *, name: str) -> Format:
     if body.startswith(ipswrite.MAGIC32):
         return Format.IPS
     if body.startswith(ipswrite.MAGIC):
-        return Format.ZPS if SUFFIXES.get(path.suffix.lower()) == Format.ZPS else Format.IPS
+        return Format.ZPS if SUFFIXES.get(Path(name).suffix.lower()) == Format.ZPS else Format.IPS
     if apsgba.matches(body):
         return Format.APS_GBA
     if body.startswith(apswrite.MAGIC):
         return Format.APS
     found = next((kind for magic, kind in MAGICS if body.startswith(magic)), None)
     if found is None:
-        raise PatchError(f"{path.name}: not a patch in any format read here: {KNOWN}")
+        raise PatchError(f"{name}: not a patch in any format read here: {KNOWN}")
     return found
 
 
@@ -157,7 +157,7 @@ def read(path: str | Path) -> Patch:
         body = where.read_bytes()
     except OSError as error:
         raise PatchError(f"cannot read {where}: {error.strerror or error}") from error
-    kind = _detected(where, body)
+    kind = identify(body, name=where.name)
     binding = _header_beside(where) if kind == Format.ZPS else None
     return Patch(where.name, kind, body, binding)
 
