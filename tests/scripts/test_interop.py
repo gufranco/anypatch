@@ -227,3 +227,31 @@ class TestChoosingTools:
 
         # Assert
         assert found is expected
+
+
+class TestAToolThatHangs:
+    def test_it_is_stopped_at_the_timeout_and_its_output_tail_is_reported(
+        self, tmp_path, monkeypatch
+    ):
+        # Arrange
+        monkeypatch.setattr(INTEROP, "TIMEOUT", 1)
+        paths = {"out": tmp_path / "out.bin"}
+
+        # Act
+        found = INTEROP._run("echo still going; sleep 5", paths)
+
+        # Assert
+        assert found == "timed out after 1 s: echo still going; sleep 5 still going\n"
+
+
+class TestAToolThatWritesNothing:
+    def test_a_missing_patch_is_a_failure_rather_than_a_crash(self, tmp_path):
+        # Arrange
+        folder = tools(tmp_path / "bin", "#!/bin/sh\nexit 0\n", PATCHER)
+
+        # Act
+        done = run(folder, tmp_path / "work", "--case", "first-byte")
+
+        # Assert
+        assert done.returncode == 1
+        assert "FAIL first-byte bsdiff bdf theirs the tool wrote no patch" in done.stdout

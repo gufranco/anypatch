@@ -14,7 +14,8 @@ from anypatch import api
 from anypatch import boundaries_test_support as boundaries
 from anypatch.patchio import Format, PatchError
 
-TIMEOUT = 900
+TIMEOUT = 300
+LOG_TAIL = 2000
 REPORT_WIDTH = 600
 OURS = "ours"
 THEIRS = "theirs"
@@ -82,7 +83,53 @@ GBA_RESIZED = (
     "varint-0x7f",
     "varint-0x80",
 )
+FLIPS_IPS32 = "Flips does not read IPS32"
+FLIPS_IPS_BIG = "Flips refuses IPS for a file over 16 MiB, whatever the changes"
+FLIPS_EOF_RUN = "Flips never finishes an IPS whose run starts at the EOF offset"
+FLIPS_EMPTY_BPS = "Flips writes a BPS for an empty target that it reports as broken itself"
+NINJA_ZERO = (
+    "NINJA writes 0 as a zero-width number, and on PHP 8 its fread of zero bytes throws where "
+    "PHP 5 returned nothing"
+)
+MAKEPPF_SIZE = "MakePPF compares only the length both files share, so it drops a size change"
+PPF_RESIZED = (
+    "data-to-empty",
+    "empty-to-data",
+    "grow-by-one",
+    "ips-grow-to-limit",
+    "ips-shrink-below-limit",
+    "ips-shrink-to-limit",
+    "pmsr-base-grow",
+    "shrink-by-one",
+    "varint-0x3fff",
+    "varint-0x4000",
+    "varint-0x7f",
+    "varint-0x80",
+)
 KNOWN: Mapping[tuple[str, Format, str, str], str] = {
+    **{("flips", Format.IPS, OURS, case): FLIPS_IPS32 for case in IPS32_CASES},
+    **{
+        ("flips", Format.IPS, THEIRS, case): FLIPS_IPS_BIG
+        for case in (*IPS32_CASES, "ips-past-limit-low-change")
+    },
+    ("flips", Format.IPS, THEIRS, "ips-run-at-eof-offset"): FLIPS_EOF_RUN,
+    ("flips", Format.BPS, THEIRS, "data-to-empty"): FLIPS_EMPTY_BPS,
+    ("ninja", Format.RUP, THEIRS, "identical"): "NINJA deletes the patch for identical files",
+    **{
+        ("ninja", Format.RUP, direction, case): NINJA_ZERO
+        for direction, case in (
+            (OURS, "empty-to-data"),
+            (OURS, "data-to-empty"),
+            (OURS, "first-byte"),
+            (THEIRS, "empty-to-data"),
+            (THEIRS, "data-to-empty"),
+        )
+    },
+    **{
+        (tool, Format.PPF, THEIRS, case): MAKEPPF_SIZE
+        for tool in ("makeppf3", "makeppf3-plain")
+        for case in PPF_RESIZED
+    },
     ("bsdiff", Format.BDF, THEIRS, "empty-to-data"): "bsdiff cannot mmap an empty file",
     ("bsdiff", Format.BDF, THEIRS, "data-to-empty"): "bsdiff cannot mmap an empty file",
     ("xdelta3", Format.XDELTA, OURS, "data-to-empty"): "xdelta3 refuses to write an empty output",
@@ -91,7 +138,6 @@ KNOWN: Mapping[tuple[str, Format, str, str], str] = {
     ("romjs", Format.RUP, OURS, "empty-to-data"): ROMJS_EMPTY,
     ("romjs", Format.RUP, THEIRS, "empty-to-data"): ROMJS_EMPTY,
     ("romjs", Format.RUP, THEIRS, "data-to-empty"): ROMJS_EMPTY,
-    ("romjs", Format.PPF, OURS, "identical"): "RomPatcher.js crashes on a PPF with no records",
     ("romjs", Format.IPS, OURS, "data-to-empty"): ROMJS_TRUNCATE_ZERO,
     ("romjs", Format.IPS, THEIRS, "data-to-empty"): ROMJS_TRUNCATE_ZERO,
     ("romjs", Format.IPS, THEIRS, "ips-shrink-to-limit"): ROMJS_TRUNCATE_WRAP,
@@ -169,6 +215,25 @@ def _xdelta() -> list[Exchange]:
     return [reader, *writers]
 
 
+def _flips() -> list[Exchange]:
+    create = "flips --create --exact --%s {source} {target} {patch}"
+    apply = "flips --apply --exact {patch} {source} {out}"
+    return [
+        Exchange("flips", Format.IPS, create % "ips", apply),
+        Exchange("flips", Format.BPS, create % "bps-delta", apply),
+        Exchange("flips-linear", Format.BPS, create % "bps-linear", None),
+        Exchange("flips", Format.UPS, None, apply),
+    ]
+
+
+def _ppf() -> list[Exchange]:
+    return [
+        Exchange("makeppf3", Format.PPF, "makeppf3 c -u {source} {target} {patch}", None),
+        Exchange("makeppf3-plain", Format.PPF, "makeppf3 c {source} {target} {patch}", None),
+        Exchange("applyppf3", Format.PPF, None, "cp {source} {out} && applyppf3 a {out} {patch}"),
+    ]
+
+
 def exchanges() -> list[Exchange]:
     return [
         *_romjs(),
@@ -178,6 +243,21 @@ def exchanges() -> list[Exchange]:
             Format.BDF,
             "bsdiff {source} {target} {patch}",
             "bspatch {source} {out} {patch}",
+        ),
+        *_flips(),
+        *_ppf(),
+        Exchange(
+            "ninja",
+            Format.RUP,
+            "mkdir -p {patch}.a {patch}.b && cp {source} {patch}.a/f && cp {target} {patch}.b/f"
+            " && $NINJA {patch}.a {patch}.b {patch} raw none",
+            "cp {source} {out} && $NINJA {patch} {out}",
+        ),
+        Exchange(
+            "bsdiff4",
+            Format.BDF,
+            "bsdiff4 {source} {target} {patch}",
+            "bspatch4 {source} {out} {patch}",
         ),
         Exchange(
             "bsdiff43",
@@ -194,17 +274,30 @@ def exchanges() -> list[Exchange]:
     ]
 
 
+def _tail(log: Path) -> str:
+    data = log.read_bytes()
+    return data[-LOG_TAIL:].decode("utf-8", errors="replace")
+
+
 def _run(template: str, paths: dict[str, Path]) -> str:
     quoted = {name: shlex.quote(str(path)) for name, path in paths.items()}
     command = os.path.expandvars(template.format(**quoted))
-    try:
-        done = subprocess.run(
-            command, shell=True, capture_output=True, text=True, timeout=TIMEOUT, check=False
-        )
-    except subprocess.TimeoutExpired:
-        return f"timed out after {TIMEOUT} s: {command}"
+    log = paths["out"].with_name("tool.log")
+    with log.open("wb") as sink:
+        try:
+            done = subprocess.run(
+                command,
+                shell=True,
+                stdin=subprocess.DEVNULL,
+                stdout=sink,
+                stderr=subprocess.STDOUT,
+                timeout=TIMEOUT,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return f"timed out after {TIMEOUT} s: {command} {_tail(log)}"
     if done.returncode != 0:
-        return f"exit {done.returncode}: {command} {done.stdout}{done.stderr}".strip()
+        return f"exit {done.returncode}: {command} {_tail(log)}".strip()
     return ""
 
 
@@ -222,6 +315,8 @@ def _theirs_read_by_us(case: boundaries.Boundary, one: Exchange, paths: dict[str
     failed = _run(one.make or "", paths)
     if failed:
         return failed
+    if not paths["patch"].exists():
+        return "the tool wrote no patch"
     patch = api.load(paths["patch"].read_bytes(), name=paths["patch"].name)
     image = api.apply(case.source, [patch]).image
     return "" if image == case.target else "our output differs from the target"
