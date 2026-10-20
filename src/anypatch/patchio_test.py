@@ -65,12 +65,15 @@ class TestFormats:
         assert ".ips" in str(raised.value) and ".xdelta" in str(raised.value)
 
 
+TAIL = {Format.PAT: b""}
+
+
 class TestRoundTrips:
     @pytest.mark.parametrize("kind", [one for one in patchio.WRITABLE if one is not Format.PMSR])
     def test_every_writable_format_turns_the_source_into_the_target(self, kind, tmp_path):
         # Arrange
         before = image()
-        after = changed(before, 0x200, b"\xde\xad\xbe\xef") + b"tail"
+        after = changed(before, 0x200, b"\xde\xad\xbe\xef") + TAIL.get(kind, b"tail")
         path = tmp_path / f"fix.{kind.value}"
 
         # Act
@@ -132,7 +135,8 @@ class TestReading:
         # Assert
         assert str(raised.value) == (
             "notes.ips: not a patch in any format read here: "
-            "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, PMSR, BDF, BSDIFF43, GDIFF or xdelta"
+            "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, PMSR, BDF, BSDIFF43, GDIFF, "
+            "PAT or xdelta"
         )
 
     @pytest.mark.parametrize(
@@ -287,3 +291,25 @@ class TestWriting:
         assert files[".ebp"].endswith(
             b'EOF{"patcher": "EBPatcher", "title": "", "author": "", "description": "hi"}'
         )
+
+
+class TestPatWithoutItsExtension:
+    def test_text_with_record_lines_is_read_as_pat(self):
+        # Arrange
+        body = b"Comparing files a and b\r\n00000000: 41 61\r\n"
+
+        # Act
+        found = patchio.identify(body, name="notes.bin")
+
+        # Assert
+        assert found is Format.PAT
+
+    def test_a_pat_file_whose_comment_starts_with_patch_is_still_pat(self):
+        # Arrange
+        body = b"PATCH notes\r\n00000000: 41 61\r\n"
+
+        # Act
+        found = patchio.identify(body, name="fix.pat")
+
+        # Assert
+        assert found is Format.PAT

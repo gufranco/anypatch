@@ -85,6 +85,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | BDF，bsdiff 4 | 是 | 是 | `.bdf`、`.bsdiff` | 无 |
 | BSDIFF43，ENDSLEY | 是 | 是，用 `--format bsdiff43` | `.bsdiff` | 无 |
 | GDIFF | 是 | 是 | `.gdiff`、`.gdf` | 无 |
+| PAT，FireFlower | 是，也读 `fc /b` 的输出 | 是，大小不变时 | `.pat` | 每个被修改字节的原值 |
 | xdelta，VCDIFF | 是 | 是 | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | 补丁带有时，每个窗口的 Adler-32 校验和。读取 xdelta3 的输出，无论无二次压缩、LZMA、DJW 还是 FGK |
 
 格式由内容决定；只有名为 `.zps` 或 `.ip1` 的 IPS 才按 ZPS 读取。每个补丁都单独应用到干净的源文件上，再比较各自改变的字节。向同一字节写入不同值的两个补丁会被拒绝，并列出每个范围和双方的值；相同的写入会合并。格式带有源文件校验和的补丁，用在其他文件上时会被拒绝并给出双方的值；源文件已经包含结果时，会报告为已应用。声称结果大于 1 GiB 且大于源文件的补丁，会在分配任何内存之前被拒绝。

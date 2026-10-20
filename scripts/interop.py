@@ -253,6 +253,7 @@ def exchanges() -> list[Exchange]:
             " && $NINJA {patch}.a {patch}.b {patch} raw none",
             "cp {source} {out} && $NINJA {patch} {out}",
         ),
+        Exchange("ninja", Format.PAT, None, "cp {source} {out} && $NINJA {patch} {out}"),
         Exchange(
             "bsdiff4",
             Format.BDF,

@@ -23,6 +23,7 @@ NAMES = {
     Format.BDF: ("BDF", NOTHING),
     Format.BSDIFF43: ("BSDIFF43, ENDSLEY", NOTHING),
     Format.GDIFF: ("GDIFF", NOTHING),
+    Format.PAT: ("PAT, FireFlower", "the original value of every byte it changes"),
     Format.XDELTA: ("xdelta", "an Adler-32 checksum of every window, when present"),
 }
 EXTRA_EXTENSIONS = {

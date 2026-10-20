@@ -216,7 +216,26 @@ REFUSED: Mapping[tuple[str, Format], str] = {
 }
 
 
+PAT_RESIZED = (
+    "empty-to-data",
+    "data-to-empty",
+    "grow-by-one",
+    "shrink-by-one",
+    "varint-0x7f",
+    "varint-0x80",
+    "varint-0x3fff",
+    "varint-0x4000",
+    "ips-grow-to-limit",
+    "ips-shrink-to-limit",
+    "ips-shrink-below-limit",
+    "pmsr-base-grow",
+)
+PAT_SIZE = "cannot change a file's size"
+
+
 def refused(name: str, kind: Format) -> str:
+    if kind is Format.PAT and name in PAT_RESIZED:
+        return PAT_SIZE
     if kind is Format.PMSR and name not in STAR_ROD:
         return PAPER_MARIO
     return REFUSED.get((name, kind), "")

@@ -14,6 +14,7 @@ from anypatch.formats import (
     gdiff,
     imagesize,
     ipswrite,
+    pat,
     pmsr,
     ppf,
     rup,
@@ -39,6 +40,7 @@ class Format(StrEnum):
     BDF = "bdf"
     BSDIFF43 = "bsdiff43"
     GDIFF = "gdiff"
+    PAT = "pat"
     XDELTA = "xdelta"
 
 
@@ -56,6 +58,7 @@ SUFFIXES = {
     ".bsdiff": Format.BDF,
     ".gdiff": Format.GDIFF,
     ".gdf": Format.GDIFF,
+    ".pat": Format.PAT,
     ".xdelta": Format.XDELTA,
     ".vcdiff": Format.XDELTA,
     ".xd3": Format.XDELTA,
@@ -74,10 +77,11 @@ FAULTS = (
     bdf.BdfError,
     bsdiff43.Bsdiff43Error,
     gdiff.GdiffError,
+    pat.PatError,
     vcdiff.VcdiffError,
     imagesize.ImageSizeError,
 )
-KNOWN = "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, PMSR, BDF, BSDIFF43, GDIFF or xdelta"
+KNOWN = "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, PMSR, BDF, BSDIFF43, GDIFF, PAT or xdelta"
 MAGICS = (
     (ups.MAGIC, Format.UPS),
     (bps.MAGIC, Format.BPS),
@@ -103,6 +107,7 @@ APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
     Format.BDF: bdf.apply,
     Format.BSDIFF43: bsdiff43.apply,
     Format.GDIFF: gdiff.apply,
+    Format.PAT: pat.apply,
     Format.XDELTA: vcdiff.apply,
 }
 Builder = Callable[[bytes, bytes, str], bytes]
@@ -119,6 +124,7 @@ BUILDERS: dict[Format, Builder] = {
     Format.BDF: lambda before, after, _: bdf.build(before, after),
     Format.BSDIFF43: lambda before, after, _: bsdiff43.build(before, after),
     Format.GDIFF: lambda before, after, _: gdiff.build(before, after),
+    Format.PAT: lambda before, after, _: pat.build(before, after),
     Format.APS_GBA: lambda before, after, _: apsgba.build(before, after),
     Format.PMSR: lambda before, after, _: pmsr.build(before, after),
     Format.XDELTA: lambda before, after, _: vcdiff.build(before, after),
@@ -147,6 +153,8 @@ def format_of(path: str | Path) -> Format:
 
 
 def identify(body: bytes, *, name: str) -> Format:
+    if SUFFIXES.get(Path(name).suffix.lower()) == Format.PAT and pat.matches(body):
+        return Format.PAT
     if body.startswith(ipswrite.MAGIC32):
         return Format.IPS
     if body.startswith(ipswrite.MAGIC):
@@ -156,6 +164,8 @@ def identify(body: bytes, *, name: str) -> Format:
     if body.startswith(apswrite.MAGIC):
         return Format.APS
     found = next((kind for magic, kind in MAGICS if body.startswith(magic)), None)
+    if found is None and pat.matches(body):
+        return Format.PAT
     if found is None:
         raise PatchError(f"{name}: not a patch in any format read here: {KNOWN}")
     return found

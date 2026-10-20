@@ -15,16 +15,18 @@ GBA_BLOCK = 0x10000
 GBA_SOURCE = bytes(range(256)) * (GBA_BLOCK // 256)
 GBA_TARGET = b"\x01" + GBA_SOURCE[1:]
 STAR_ROD_RECORD = (0x10, b"star")
+SAME_SIZE = (Format.PAT,)
 DIFFERS = "a patch it wrote did not replay to its target"
 
 Probe = Callable[[Format], bool]
 
 
 def _round_trip(kind: Format) -> bool:
-    files = api.make(BASE, AFTER, kind)
+    after = AFTER[: len(BASE)] if kind in SAME_SIZE else AFTER
+    files = api.make(BASE, after, kind)
     name = f"selftest.{kind.value}"
     patch = api.load(files[f".{kind.value}"], name=name, binding=files.get(".hdr"))
-    return api.apply(BASE, [patch]).image == AFTER
+    return api.apply(BASE, [patch]).image == after
 
 
 def _gba() -> bool:

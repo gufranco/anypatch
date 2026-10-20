@@ -12,6 +12,9 @@ RUNNER = CliRunner()
 BASE = bytes((at * 7) & 0xFF for at in range(0x400))
 
 
+TAIL = {Format.PAT: b""}
+
+
 def edited(data: bytes, at: int, new: bytes) -> bytes:
     return data[:at] + new + data[at + len(new) :]
 
@@ -30,7 +33,7 @@ class TestMake:
     @pytest.mark.parametrize("kind", [one for one in WRITABLE if one is not Format.PMSR])
     def test_the_command_writes_the_bytes_the_library_returns(self, kind, tmp_path):
         # Arrange
-        after = edited(BASE, 0x200, b"\xde\xad") + b"tail"
+        after = edited(BASE, 0x200, b"\xde\xad") + TAIL.get(kind, b"tail")
         paths = files(tmp_path, before_bin=BASE, after_bin=after)
         target = tmp_path / f"fix.{kind.value}"
 
