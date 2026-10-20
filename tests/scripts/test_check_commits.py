@@ -22,7 +22,7 @@ def message(tmp_path: Path, subject: str) -> Path:
     return path
 
 
-def repository(tmp_path: Path, subjects: list[str]) -> Path:
+def repository(tmp_path: Path, subjects: list[str], author: str = "t") -> Path:
     def git(*args: str) -> None:
         isolated = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
         subprocess.run(
@@ -33,7 +33,7 @@ def repository(tmp_path: Path, subjects: list[str]) -> Path:
     for subject in subjects:
         git(
             "-c",
-            "user.name=t",
+            f"user.name={author}",
             "-c",
             "user.email=t@example.invalid",
             "commit",
@@ -92,6 +92,18 @@ class TestARange:
         # Assert
         assert result.returncode == 1
         assert result.stderr.startswith("Bad one: the type must be one of")
+
+    def test_a_dependabot_commit_is_not_held_to_the_subject_rules(self, tmp_path):
+        # Arrange
+        subject = "build: bump prettier from 3.9.9 to 3.9.10 in the release-tooling group"
+        repo = repository(tmp_path, ["chore: start", subject], author="dependabot[bot]")
+
+        # Act
+        result = check("--range", "HEAD~1..HEAD", cwd=repo)
+
+        # Assert
+        assert result.returncode == 0
+        assert result.stderr == ""
 
     def test_a_range_git_cannot_read_is_an_error(self, tmp_path):
         # Arrange

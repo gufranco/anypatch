@@ -4,6 +4,7 @@ set -euo pipefail
 
 readonly TYPES='feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert'
 readonly MAX_SUBJECT=50
+readonly DEPENDABOT='dependabot[bot]'
 readonly USAGE='usage: check-commits.sh --message <file> | --range <from>..<to>'
 
 length_of() {
@@ -41,15 +42,16 @@ check_subject() {
 }
 
 check_range() {
-  local failed=0 subject subjects
-  if ! subjects=$(git log --no-merges --format=%s "$1" 2>/dev/null); then
+  local failed=0 author subject commits
+  if ! commits=$(git log --no-merges --format=%an%x09%s "$1" 2>/dev/null); then
     printf 'cannot read the commit range %s\n' "$1" >&2
     return 2
   fi
-  while IFS= read -r subject; do
+  while IFS=$'\t' read -r author subject; do
     [[ -n ${subject} ]] || continue
+    [[ ${author} != "${DEPENDABOT}" ]] || continue
     check_subject "${subject}" || failed=1
-  done <<<"${subjects}"
+  done <<<"${commits}"
   return "${failed}"
 }
 
