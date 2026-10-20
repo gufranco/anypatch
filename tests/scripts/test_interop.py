@@ -267,3 +267,69 @@ class TestAnExchangeWithItsOwnTimeout:
 
         # Assert
         assert found == "timed out after 1 s: sleep 5"
+
+
+DLDITOOL = (
+    '#!/bin/sh\nexec "{python}" -c "import sys; from pathlib import Path; '
+    "from anypatch.formats import dldi; app = Path(sys.argv[2]); "
+    'app.write_bytes(dldi.apply(app.read_bytes(), Path(sys.argv[1]).read_bytes()))" "$1" "$2"\n'
+)
+
+
+def dlditool(folder: Path, body: str) -> Path:
+    folder.mkdir()
+    (folder / "dlditool").write_text(body.format(python=sys.executable))
+    (folder / "dlditool").chmod(0o755)
+    return folder
+
+
+def run_dldi(bin_folder: Path, work: Path) -> subprocess.CompletedProcess[str]:
+    environment = {
+        **os.environ,
+        "PATH": f"{bin_folder}{os.pathsep}{os.environ['PATH']}",
+        "PYTHONPATH": str(ROOT / "src"),
+    }
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), "--tool", "dlditool", "--work", str(work)],
+        capture_output=True,
+        text=True,
+        env=environment,
+        check=False,
+    )
+
+
+class TestDlditool:
+    def test_every_generated_case_passes_when_dlditool_agrees(self, tmp_path):
+        # Arrange
+        folder = dlditool(tmp_path / "bin", DLDITOOL)
+
+        # Act
+        done = run_dldi(folder, tmp_path / "work")
+
+        # Assert
+        assert done.returncode == 0, done.stdout + done.stderr
+        assert done.stdout.splitlines()[0] == "PASS plain dlditool dldi theirs"
+        assert done.stdout.splitlines()[-1] == "9 passed, 0 failed"
+
+    def test_a_failing_dlditool_fails_every_case_with_its_exit_code(self, tmp_path):
+        # Arrange
+        folder = dlditool(tmp_path / "bin", BROKEN)
+
+        # Act
+        done = run_dldi(folder, tmp_path / "work")
+
+        # Assert
+        assert done.returncode == 1
+        assert done.stdout.count("exit 3:") == 9
+        assert done.stdout.splitlines()[-1] == "0 passed, 9 failed"
+
+    def test_a_dlditool_that_changes_nothing_is_reported_as_differing(self, tmp_path):
+        # Arrange
+        folder = dlditool(tmp_path / "bin", "#!/bin/sh\nexit 0\n")
+
+        # Act
+        done = run_dldi(folder, tmp_path / "work")
+
+        # Assert
+        assert done.returncode == 1
+        assert "FAIL plain dlditool dldi theirs our output differs from dlditool's" in done.stdout
