@@ -114,7 +114,6 @@ class TestRefusals:
         [
             (b"PATCHEOF", "not a VCDIFF"),
             (vcdiff.MAGIC + b"\x01\x00", "version"),
-            (vcdiff.MAGIC + b"\x00\x02", "code table"),
             (vcdiff.MAGIC + b"\x00\x01\x07", "secondary compressor 7"),
             (vcdiff.MAGIC + b"\x00\x08", "header flags"),
             (HEADER + b"\x08", "window flags"),
@@ -347,3 +346,124 @@ class TestSizesCheckedBeforeWork:
 
         # Assert
         assert "1,073,741,826-byte result" in str(raised.value)
+
+
+def code_string(table) -> bytes:
+    columns = [[row[half][field] for row in table] for field in range(3) for half in range(2)]
+    order = (0, 1, 2, 3, 4, 5)
+    return b"".join(bytes(columns[at]) for at in order)
+
+
+def add_window(target: bytes) -> bytes:
+    inst = bytes([1]) + vcdiff.varint(len(target))
+    body = (
+        vcdiff.varint(len(target))
+        + bytes([0])
+        + vcdiff.varint(len(target))
+        + vcdiff.varint(len(inst))
+        + vcdiff.varint(0)
+    )
+    delta = body + target + inst
+    return bytes([0]) + vcdiff.varint(len(delta)) + delta
+
+
+def with_table(table, near: int, same: int, layout: str, nested_flags: int = 0) -> bytes:
+    nested = vcdiff.MAGIC + bytes([0, nested_flags]) + add_window(code_string(table))
+    head = vcdiff.MAGIC + bytes([0, vcdiff.VCD_CODETABLE])
+    if layout == "rfc":
+        data = bytes([near, same]) + nested
+        return head + vcdiff.varint(len(data)) + data
+    return head + vcdiff.varint(near) + vcdiff.varint(same) + nested
+
+
+def window(size: int, inst: bytes, data: bytes, addr: bytes = b"", segment: bytes = b"") -> bytes:
+    indicator = vcdiff.VCD_SOURCE if segment else 0
+    body = (
+        vcdiff.varint(size)
+        + bytes([0])
+        + vcdiff.varint(len(data))
+        + vcdiff.varint(len(inst))
+        + vcdiff.varint(len(addr))
+    )
+    delta = body + data + inst + addr
+    return bytes([indicator]) + segment + vcdiff.varint(len(delta)) + delta
+
+
+def rfc_table(data: bytes) -> bytes:
+    return vcdiff.MAGIC + bytes([0, vcdiff.VCD_CODETABLE]) + vcdiff.varint(len(data)) + data
+
+
+THREE_BYTE_ADD = 20
+CUSTOM = (
+    *vcdiff.TABLE[:THREE_BYTE_ADD],
+    ((vcdiff.ADD, 3, 0), (vcdiff.NOOP, 0, 0)),
+    *vcdiff.TABLE[THREE_BYTE_ADD + 1 :],
+)
+
+
+class TestApplicationCodeTables:
+    @pytest.mark.parametrize("layout", ["rfc", "open-vcdiff"])
+    def test_an_opcode_means_what_the_patch_table_says(self, layout):
+        # Arrange
+        patch = with_table(CUSTOM, 4, 3, layout) + window(3, bytes([THREE_BYTE_ADD]), b"xyz")
+
+        # Act
+        result = vcdiff.apply(b"", patch)
+
+        # Assert
+        assert result == b"xyz"
+
+    def test_a_table_with_no_near_or_same_cache_copies_by_absolute_address(self):
+        # Arrange
+        copy_mode_zero = bytes([19]) + vcdiff.varint(3)
+        segment = vcdiff.varint(4) + vcdiff.varint(0)
+        body = window(3, copy_mode_zero, b"", vcdiff.varint(1), segment)
+        patch = with_table(vcdiff.TABLE, 0, 0, "rfc") + body
+
+        # Act
+        result = vcdiff.apply(b"abcd", patch)
+
+        # Assert
+        assert result == b"bcd"
+
+    @pytest.mark.parametrize(
+        ("patch", "message"),
+        [
+            (
+                with_table(vcdiff.TABLE, 0, 0, "rfc")
+                + window(4, bytes([19 + 2 * 16]) + vcdiff.varint(4), b"", vcdiff.varint(0)),
+                "COPY mode 2 is past the 2 modes this code table allows",
+            ),
+            (
+                with_table(vcdiff.TABLE, 4, 3, "rfc", nested_flags=vcdiff.VCD_CODETABLE),
+                "a code table cannot carry another code table",
+            ),
+            (
+                vcdiff.MAGIC + bytes([0, vcdiff.VCD_CODETABLE]) + vcdiff.varint(3) + b"\x04\x03!",
+                "the code table data does not hold a VCDIFF delta",
+            ),
+            (
+                with_table((*vcdiff.TABLE[:255], ((7, 0, 0), (0, 0, 0))), 4, 3, "rfc"),
+                "opcode 255 names instruction type 7",
+            ),
+            (
+                rfc_table(bytes([4, 3]) + vcdiff.MAGIC + bytes([0, 0]) + add_window(b"ab")),
+                "the code table delta gives 2 bytes, not 1536",
+            ),
+            (
+                vcdiff.MAGIC + bytes([0, vcdiff.VCD_CODETABLE]) + vcdiff.varint(300) + b"\x01",
+                "cache sizes past 255",
+            ),
+        ],
+        ids=["mode", "nested", "no-delta", "type", "short", "cache"],
+    )
+    def test_a_bad_code_table_is_refused(self, patch, message):
+        # Arrange
+        source = bytes(4)
+
+        # Act
+        with pytest.raises(vcdiff.VcdiffError) as raised:
+            vcdiff.apply(source, patch)
+
+        # Assert
+        assert message in str(raised.value)

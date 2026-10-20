@@ -86,7 +86,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | BSDIFF43, ENDSLEY | yes | yes, with `--format bsdiff43` | `.bsdiff` | Nothing |
 | GDIFF | yes | yes | `.gdiff`, `.gdf` | Nothing |
 | PAT, FireFlower | yes, also `fc /b` output | yes, when the size stays the same | `.pat` | The original value of every byte it changes |
-| xdelta, VCDIFF | yes | yes | `.xdelta`, `.vcdiff`, `.xd3`, `.delta` | An Adler-32 checksum of every window, when present. Reads xdelta3 output with no secondary compression, LZMA, DJW or FGK |
+| xdelta, VCDIFF | yes | yes | `.xdelta`, `.vcdiff`, `.xd3`, `.delta` | An Adler-32 checksum of every window, when present. Reads xdelta3 output with no secondary compression, LZMA, DJW or FGK, open-vcdiff's interleaved and checksummed S version, and application code tables in the RFC 3284 and open-vcdiff layouts |
 
 The contents decide the format; only an IPS body named `.zps` or `.ip1` is read as ZPS. Every patch is applied to the clean source on its own, and the bytes each one changes are compared. Two patches that write different values to one byte are refused, with every range and both values listed; identical writes merge. A patch whose format carries a source checksum is refused on any other file, naming both values, and when the source already holds the result it is reported as already applied. A patch that claims a result larger than both 1 GiB and its source is refused before anything is allocated.
 

@@ -10,6 +10,9 @@ from anypatch.formats.apswrite import differing_spans
 
 MAGIC = b"\xd6\xc3\xc4"
 VERSION = 0
+VERSION_SDCH = ord("S")
+VERSIONS = (VERSION, VERSION_SDCH)
+ADLER_SEEDS = {VERSION: 1, VERSION_SDCH: 0}
 VCD_SECONDARY = 0x01
 VCD_CODETABLE = 0x02
 VCD_APPHEADER = 0x04
@@ -22,6 +25,8 @@ NOOP, ADD, RUN, COPY = 0, 1, 2, 3
 NEAR, SAME = 4, 3
 SAME_SPAN = SAME * 256
 VARINT_BYTES = 10
+CODE_STRING = 6 * 256
+CACHE_LIMIT = 255
 DEFAULT_WINDOW = 1 << 23
 MIN_COPY = 4
 MIN_RUN = 8
@@ -70,6 +75,9 @@ class _Reader:
         self.data = data
         self.pos = 0
 
+    def at(self, offset: int, size: int) -> bytes:
+        return self.data[self.pos + offset : self.pos + offset + size]
+
     def done(self) -> bool:
         return self.pos >= len(self.data)
 
@@ -95,25 +103,66 @@ class _Reader:
         raise VcdiffError(f"a number at byte {self.pos} is too long to be a size")
 
 
+@dataclass(frozen=True, slots=True)
+class _Code:
+    table: tuple[Instruction, ...]
+    near: int
+    same: int
+
+
+DEFAULT_CODE = _Code(TABLE, NEAR, SAME)
+
+
 class _Cache:
-    def __init__(self) -> None:
-        self.near = [0] * NEAR
+    def __init__(self, code: _Code) -> None:
+        self.near = [0] * code.near
         self.next = 0
-        self.same = [0] * SAME_SPAN
+        self.same = [0] * (code.same * 256)
+        self.modes = 2 + code.near + code.same
+
+    def _found(self, mode: int, here: int, addresses: _Reader) -> int:
+        if mode >= self.modes:
+            raise VcdiffError(
+                f"COPY mode {mode} is past the {self.modes} modes this code table allows"
+            )
+        if mode == 0:
+            return addresses.varint()
+        if mode == 1:
+            return here - addresses.varint()
+        if mode < 2 + len(self.near):
+            return self.near[mode - 2] + addresses.varint()
+        return self.same[(mode - 2 - len(self.near)) * 256 + addresses.byte()]
 
     def address(self, mode: int, here: int, addresses: _Reader) -> int:
-        if mode == 0:
-            found = addresses.varint()
-        elif mode == 1:
-            found = here - addresses.varint()
-        elif mode < 2 + NEAR:
-            found = self.near[mode - 2] + addresses.varint()
-        else:
-            found = self.same[(mode - 2 - NEAR) * 256 + addresses.byte()]
-        self.near[self.next] = found
-        self.next = (self.next + 1) % NEAR
-        self.same[found % SAME_SPAN] = found
+        found = self._found(mode, here, addresses)
+        if self.near:
+            self.near[self.next] = found
+            self.next = (self.next + 1) % len(self.near)
+        if self.same:
+            self.same[found % len(self.same)] = found
         return found
+
+
+def table_string(table: tuple[Instruction, ...]) -> bytes:
+    return b"".join(
+        bytes(row[half][field] for row in table) for field in range(3) for half in range(2)
+    )
+
+
+def _table_from(string: bytes) -> tuple[Instruction, ...]:
+    columns = [string[at * 256 : (at + 1) * 256] for at in range(6)]
+    rows = tuple(
+        (
+            (columns[0][code], columns[2][code], columns[4][code]),
+            (columns[1][code], columns[3][code], columns[5][code]),
+        )
+        for code in range(256)
+    )
+    for code, row in enumerate(rows):
+        for kind, _, _ in row:
+            if kind > COPY:
+                raise VcdiffError(f"opcode {code} names instruction type {kind}")
+    return rows
 
 
 class _Secondary:
@@ -146,22 +195,55 @@ class _Secondary:
         return self.streams[section].decompress(payload, max_length=size)
 
 
-def _header(reader: _Reader) -> int | None:
+@dataclass(frozen=True, slots=True)
+class _Format:
+    kind: int | None
+    version: int
+    code: _Code
+
+
+def _nested_table(reader: _Reader) -> bytes:
+    if reader.at(0, len(MAGIC)) != MAGIC:
+        raise VcdiffError("the code table data does not hold a VCDIFF delta")
+    return _decode(reader, table_string(TABLE), nested=True, until=CODE_STRING)
+
+
+def _custom_code(reader: _Reader) -> _Code:
+    mark = reader.pos
+    length = reader.varint()
+    if reader.at(2, len(MAGIC)) == MAGIC:
+        data = _Reader(reader.take(length))
+        near, same = data.byte(), data.byte()
+        string = _nested_table(data)
+    else:
+        reader.pos = mark
+        near, same = reader.varint(), reader.varint()
+        if max(near, same) > CACHE_LIMIT:
+            raise VcdiffError(f"a code table names cache sizes past {CACHE_LIMIT}")
+        string = _nested_table(reader)
+    if len(string) != CODE_STRING:
+        raise VcdiffError(f"the code table delta gives {len(string)} bytes, not {CODE_STRING}")
+    return _Code(_table_from(string), near, same)
+
+
+def _header(reader: _Reader, *, nested: bool) -> _Format:
     if reader.take(len(MAGIC)) != MAGIC:
         raise VcdiffError("not a VCDIFF patch: it does not start with the xdelta magic")
-    if reader.byte() != VERSION:
-        raise VcdiffError("an unknown VCDIFF version")
+    version = reader.byte()
+    if version not in VERSIONS:
+        raise VcdiffError(f"VCDIFF version {version:#04x}; only 0 and the open-vcdiff S are read")
     flags = reader.byte()
     if flags & ~(VCD_SECONDARY | VCD_CODETABLE | VCD_APPHEADER):
         raise VcdiffError(f"unknown header flags {flags:#04x}")
+    if nested and flags & (VCD_SECONDARY | VCD_CODETABLE):
+        raise VcdiffError("a code table cannot carry another code table or secondary compression")
     kind = reader.byte() if flags & VCD_SECONDARY else None
-    if flags & VCD_CODETABLE:
-        raise VcdiffError("a patch with its own code table, which xdelta3 never writes")
     if kind not in (None, DJW_ID, LZMA_ID, FGK_ID):
         raise VcdiffError(f"unknown secondary compressor {kind}")
+    code = _custom_code(reader) if flags & VCD_CODETABLE else DEFAULT_CODE
     if flags & VCD_APPHEADER:
         reader.take(reader.varint())
-    return kind
+    return _Format(kind, version, code)
 
 
 def _segment(indicator: int, reader: _Reader, source: bytes, out: bytes) -> bytes:
@@ -189,15 +271,27 @@ class _Window:
     inst: bytes
     addr: bytes
     checksum: int | None
+    interleaved: bool
 
 
-def _delta(indicator: int, reader: _Reader, secondary: _Secondary, room: _Room) -> _Window:
+def _checksum(indicator: int, reader: _Reader, version: int) -> int | None:
+    if not indicator & VCD_ADLER32:
+        return None
+    if version == VERSION_SDCH:
+        return reader.varint()
+    return int(struct.unpack(">I", reader.take(4))[0])
+
+
+def _delta(
+    indicator: int, reader: _Reader, secondary: _Secondary, room: _Room, version: int
+) -> _Window:
     length = reader.varint()
     start = reader.pos
     size, compressed = reader.varint(), reader.byte()
     imagesize.check(room.written + size, source=room.source)
     lengths = (reader.varint(), reader.varint(), reader.varint())
-    checksum = struct.unpack(">I", reader.take(4))[0] if indicator & VCD_ADLER32 else None
+    checksum = _checksum(indicator, reader, version)
+    interleaved = version == VERSION_SDCH and lengths[0] == lengths[2] == 0
     sections = [reader.take(n) for n in lengths]
     if reader.pos - start != length:
         raise VcdiffError(
@@ -207,17 +301,19 @@ def _delta(indicator: int, reader: _Reader, secondary: _Secondary, room: _Room) 
         secondary.expand(bit, raw) if compressed & bit else raw
         for bit, raw in zip((DATA, INST, ADDR), sections, strict=True)
     )
-    return _Window(size, data, inst, addr, checksum)
+    return _Window(size, data, inst, addr, checksum, interleaved)
 
 
 class _Decoder:
-    def __init__(self, segment: bytes, window: _Window) -> None:
+    def __init__(self, segment: bytes, window: _Window, code: _Code) -> None:
         self.segment = segment
         self.window = window
+        self.table = code.table
         self.target = bytearray()
-        self.data = _Reader(window.data)
-        self.addr = _Reader(window.addr)
-        self.cache = _Cache()
+        self.inst = _Reader(window.inst)
+        self.data = self.inst if window.interleaved else _Reader(window.data)
+        self.addr = self.inst if window.interleaved else _Reader(window.addr)
+        self.cache = _Cache(code)
 
     def copy(self, mode: int, size: int) -> None:
         here = len(self.segment) + len(self.target)
@@ -240,9 +336,9 @@ class _Decoder:
             self.copy(mode, size)
 
     def run(self) -> bytes:
-        inst = _Reader(self.window.inst)
+        inst = self.inst
         while not inst.done():
-            for half in TABLE[inst.byte()]:
+            for half in self.table[inst.byte()]:
                 if half[0] != NOOP:
                     self.execute(half, half[1] or inst.varint())
         if len(self.target) != self.window.size or not self.data.done() or not self.addr.done():
@@ -250,23 +346,31 @@ class _Decoder:
         return bytes(self.target)
 
 
-def apply(source: bytes, patch: bytes) -> bytes:
-    reader = _Reader(patch)
-    secondary = _Secondary(_header(reader))
+def _decode(reader: _Reader, source: bytes, *, nested: bool, until: int | None) -> bytes:
+    found = _header(reader, nested=nested)
+    secondary = _Secondary(found.kind)
+    version = found.version
     out = bytearray()
-    while not reader.done():
+    while not reader.done() and (until is None or len(out) < until):
         indicator = reader.byte()
         if indicator & ~(VCD_SOURCE | VCD_TARGET | VCD_ADLER32):
             raise VcdiffError(f"unknown window flags {indicator:#04x}")
         segment = _segment(indicator, reader, source, bytes(out))
-        window = _delta(indicator, reader, secondary, _Room(len(out), len(source)))
-        target = _Decoder(segment, window).run()
-        if window.checksum is not None and zlib.adler32(target) != window.checksum:
+        window = _delta(indicator, reader, secondary, _Room(len(out), len(source)), version)
+        target = _Decoder(segment, window, found.code).run()
+        if (
+            window.checksum is not None
+            and zlib.adler32(target, ADLER_SEEDS[version]) != window.checksum
+        ):
             raise VcdiffError(
                 f"the window at output {len(out):#x} does not match: wrong source dump"
             )
         out.extend(target)
     return bytes(out)
+
+
+def apply(source: bytes, patch: bytes) -> bytes:
+    return _decode(_Reader(patch), source, nested=False, until=None)
 
 
 def _literal_end(chunk: bytes, at: int) -> int:
