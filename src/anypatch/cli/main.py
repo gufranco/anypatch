@@ -6,6 +6,7 @@ from typing import Annotated
 import typer
 
 from anypatch import doctor
+from anypatch.cli import patches
 from anypatch.version import VERSION
 
 NAME_WIDTH = 12
@@ -63,3 +64,6 @@ def doctor_command(
     report = doctor.diagnose()
     typer.echo(doctor_json(report) if json_output else "\n".join(doctor_lines(report)))
     raise typer.Exit(code=exit_code(report))
+
+
+patches.register(app)
