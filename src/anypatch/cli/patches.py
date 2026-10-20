@@ -20,7 +20,7 @@ FormatOption = Annotated[
     typer.Option("--format", help="the patch format; by default the output's extension decides"),
 ]
 Description = Annotated[
-    str, typer.Option("--description", help="the text an APS, EBP, PPF or RUP patch carries")
+    str, typer.Option("--description", help="the text an APS, BPS, EBP, PPF or RUP patch carries")
 ]
 Clean = Annotated[
     Path | None,

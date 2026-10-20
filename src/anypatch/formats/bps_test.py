@@ -191,3 +191,16 @@ class TestTheSizeCeiling:
 
         # Assert
         assert "ceiling" in str(raised.value)
+
+
+class TestMetadataOnWrite:
+    def test_a_description_is_carried_as_utf8_metadata_and_the_patch_still_applies(self):
+        # Arrange
+        before, after = b"source bytes", b"target bytes!"
+
+        # Act
+        patch = bps.build(before, after, description="Tradução v1")
+
+        # Assert
+        assert bps.metadata(patch) == "Tradução v1"
+        assert bps.apply(before, patch) == after

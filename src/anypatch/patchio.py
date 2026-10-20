@@ -108,7 +108,7 @@ BUILDERS: dict[Format, Builder] = {
     ),
     Format.APS: lambda before, after, text: apswrite.build(before, after, description=text),
     Format.UPS: lambda before, after, _: ups.build(before, after),
-    Format.BPS: lambda before, after, _: bps.build(before, after),
+    Format.BPS: lambda before, after, text: bps.build(before, after, description=text),
     Format.PPF: lambda before, after, text: ppf.build(before, after, description=text),
     Format.RUP: lambda before, after, text: rup.build(before, after, description=text),
     Format.BDF: lambda before, after, _: bdf.build(before, after),

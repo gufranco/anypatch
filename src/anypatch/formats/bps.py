@@ -83,8 +83,9 @@ def _actions(before: bytes, after: bytes) -> bytes:
     return b"".join([*pieces, *rest])
 
 
-def build(before: bytes, after: bytes) -> bytes:
-    sizes = varint.encode(len(before)) + varint.encode(len(after)) + varint.encode(0)
+def build(before: bytes, after: bytes, *, description: str = "") -> bytes:
+    text = description.encode("utf-8")
+    sizes = varint.encode(len(before)) + varint.encode(len(after)) + varint.encode(len(text)) + text
     crcs = struct.pack("<II", zlib.crc32(before), zlib.crc32(after))
     body = MAGIC + sizes + _actions(before, after) + crcs
     return body + struct.pack("<I", zlib.crc32(body))
