@@ -24,22 +24,25 @@ MAX_RECORD = 0xFF
 MIN_RUN = 4
 RECORD_HEAD = 5
 RUN_MARKER = 0
+SCAN_BLOCK = 0x1000
 
 
-def _differing_spans(before: bytes, after: bytes) -> list[tuple[int, bytes]]:
-    spans: list[tuple[int, bytes]] = []
-    at = 0
-    size = len(before)
-    while at < size:
-        if before[at] == after[at]:
-            at += 1
-            continue
-        end = at
-        while end < size and before[end] != after[end]:
-            end += 1
-        spans.append((at, after[at:end]))
-        at = end
-    return spans
+def _differing_positions(before: bytes, after: bytes) -> list[int]:
+    return [
+        at
+        for block in range(0, len(before), SCAN_BLOCK)
+        if before[block : block + SCAN_BLOCK] != after[block : block + SCAN_BLOCK]
+        for at in range(block, min(block + SCAN_BLOCK, len(before)))
+        if before[at] != after[at]
+    ]
+
+
+def differing_spans(before: bytes, after: bytes) -> list[tuple[int, bytes]]:
+    positions = _differing_positions(before, after)
+    last = len(positions) - 1
+    starts = [p for i, p in enumerate(positions) if i == 0 or positions[i - 1] != p - 1]
+    ends = [p + 1 for i, p in enumerate(positions) if i == last or positions[i + 1] != p + 1]
+    return [(start, after[start:end]) for start, end in zip(starts, ends, strict=True)]
 
 
 def _run_length(chunk: bytes, at: int) -> int:
@@ -85,7 +88,7 @@ def build(before: bytes, after: bytes, *, description: str = "") -> bytes:
         raise ValueError("both images must be the same length to diff them")
     if len(before) < HEADER_MINIMUM:
         raise ValueError("too short to carry a ROM header, so nothing can be bound")
-    body = b"".join(_records(offset, chunk) for offset, chunk in _differing_spans(before, after))
+    body = b"".join(_records(offset, chunk) for offset, chunk in differing_spans(before, after))
     return _header(before, description) + body
 
 
