@@ -88,6 +88,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | GDIFF | 是 | 是 | `.gdiff`、`.gdf` | 沒有 |
 | PAT，FireFlower | 是，也讀 `fc /b` 的輸出 | 是，大小不變時 | `.pat` | 每個被修改位元組的原值 |
 | DPS | 是，按 `.dps` 副檔名識別，因為該格式沒有魔數 | 是 | `.dps` | 來源大小 |
+| HDiffPatch | HDIFF13 和 HDIFFSF20，無壓縮或 zlib、bzip2、LZMA、LZMA2 | HDIFF13，無壓縮 | `.hdiff` | 來源大小 |
 | xdelta，VCDIFF | 是 | 是 | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | 修補檔附有時，每個視窗的 Adler-32 校驗和。讀取 xdelta3 的輸出，不論沒有二次壓縮、LZMA、DJW 或 FGK；也讀取 open-vcdiff 交錯且附校驗和的 S 版本，以及 RFC 3284 和 open-vcdiff 兩種排列的應用自訂碼表 |
 
 格式由內容決定；只有名為 `.zps` 或 `.ip1` 的 IPS 才按 ZPS 讀取。每個修補檔都單獨套用到乾淨的來源上，再比較各自改變的位元組。向同一位元組寫入不同值的兩個修補檔會被拒絕，並列出每個範圍和雙方的值；相同的寫入會合併。格式附有來源校驗和的修補檔，用在其他檔案上時會被拒絕並列出雙方的值；來源已經包含結果時，會報告為已套用。聲稱結果大於 1 GiB 且大於來源的修補檔，會在配置任何記憶體之前被拒絕。

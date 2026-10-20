@@ -13,6 +13,7 @@ from anypatch.formats import (
     bsdiff43,
     dps,
     gdiff,
+    hdiff,
     imagesize,
     ipswrite,
     pat,
@@ -45,6 +46,7 @@ class Format(StrEnum):
     GDIFF = "gdiff"
     PAT = "pat"
     DPS = "dps"
+    HDIFF = "hdiff"
     XDELTA = "xdelta"
 
 
@@ -64,6 +66,7 @@ SUFFIXES = {
     ".gdf": Format.GDIFF,
     ".pat": Format.PAT,
     ".dps": Format.DPS,
+    ".hdiff": Format.HDIFF,
     ".xdelta": Format.XDELTA,
     ".vcdiff": Format.XDELTA,
     ".xd3": Format.XDELTA,
@@ -85,12 +88,13 @@ FAULTS = (
     gdiff.GdiffError,
     pat.PatError,
     dps.DpsError,
+    hdiff.HdiffError,
     vcdiff.VcdiffError,
     imagesize.ImageSizeError,
 )
 KNOWN = (
     "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, PAT, "
-    "DPS or xdelta"
+    "DPS, HDiffPatch or xdelta"
 )
 MAGICS = (
     (ups.MAGIC, Format.UPS),
@@ -103,6 +107,7 @@ MAGICS = (
     (bdf.MAGIC, Format.BDF),
     (bsdiff43.MAGIC, Format.BSDIFF43),
     (gdiff.MAGIC, Format.GDIFF),
+    (hdiff.PREFIX, Format.HDIFF),
     (vcdiff.MAGIC, Format.XDELTA),
 )
 APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
@@ -121,6 +126,7 @@ APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
     Format.GDIFF: gdiff.apply,
     Format.PAT: pat.apply,
     Format.DPS: dps.apply,
+    Format.HDIFF: hdiff.apply,
     Format.XDELTA: vcdiff.apply,
 }
 Builder = Callable[[bytes, bytes, str], bytes]
@@ -139,6 +145,7 @@ BUILDERS: dict[Format, Builder] = {
     Format.BSDIFF43: lambda before, after, _: bsdiff43.build(before, after),
     Format.GDIFF: lambda before, after, _: gdiff.build(before, after),
     Format.PAT: lambda before, after, _: pat.build(before, after),
+    Format.HDIFF: lambda before, after, _: hdiff.build(before, after),
     Format.DPS: lambda before, after, text: dps.build(before, after, description=text),
     Format.APS_GBA: lambda before, after, _: apsgba.build(before, after),
     Format.PMSR: lambda before, after, _: pmsr.build(before, after),

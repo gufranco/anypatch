@@ -8,7 +8,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - NINJA 1 patches, binary or text and plain or zlib, are read with their CRC32, MD5 and SHA-1 checks, and written in binary with `--format rup1`.
 - DPS patches are read and written. The format has no magic, so a DPS patch is recognised by its `.dps` extension.
-- Patches are exchanged with open-vcdiff and NINJA 1.01 as well.
+- HDiffPatch patches are read in both single-file layouts, HDIFF13 and HDIFFSF20, uncompressed or with zlib, bzip2, LZMA or LZMA2, and written as uncompressed HDIFF13. zstd sections are refused by name, since the Python standard library has no zstd before 3.14.
+- Patches are exchanged with open-vcdiff, NINJA 1.01 and HDiffPatch as well.
 
 ### Fixes
 

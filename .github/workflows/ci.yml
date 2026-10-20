@@ -489,6 +489,36 @@ jobs:
             -d auto_prepend_file=${{ runner.temp }}/ninja1/shim.php ${{ runner.temp }}/ninja1/ninja.php
         run: python scripts/interop.py --tool ninja1 --work "$RUNNER_TEMP/interop"
 
+  hdiffpatch:
+    name: HDiffPatch and anypatch exchange every boundary patch
+    runs-on: ubuntu-26.04
+    env:
+      HDIFFPATCH_COMMIT: 3b9dca715ca492873bf2c49e22e5d5b7d2a78620
+      LZMA_COMMIT: 44809544b95bbf2dccec75d954657ff76fc349ff
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Build the reference tools
+        run: |
+          cd "$RUNNER_TEMP"
+          git clone --quiet --filter=blob:none https://github.com/sisong/HDiffPatch.git
+          git -C HDiffPatch checkout --quiet "$HDIFFPATCH_COMMIT"
+          git clone --quiet --filter=blob:none https://github.com/sisong/lzma.git
+          git -C lzma checkout --quiet "$LZMA_COMMIT"
+          git clone --quiet --depth=1 --branch v1.3.1 https://github.com/madler/zlib.git
+          git clone --quiet --depth=1 --branch bzip2-1.0.8 https://gitlab.com/bzip2/bzip2.git
+          make -C HDiffPatch -j 4 ZSTD=0 LDEF=0 XXH=0 VCD=0 BSD=0 MT=0 DIR_DIFF=0 hdiffz hpatchz
+          echo "$RUNNER_TEMP/HDiffPatch" >> "$GITHUB_PATH"
+
+      - name: Exchange the boundary files in both directions
+        env:
+          PYTHONPATH: src
+        run: python scripts/interop.py --tool hdiffpatch --work "$RUNNER_TEMP/interop"
+
   gdiff:
     name: javaxdelta and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04

@@ -328,6 +328,17 @@ def _ninja1() -> list[Exchange]:
     ]
 
 
+def _hdiffpatch() -> list[Exchange]:
+    create = "hdiffz -f -c-%s {source} {target} {patch}"
+    apply = "hpatchz -f {source} {patch} {out}"
+    return [
+        Exchange("hdiffpatch", Format.HDIFF, create % "zlib", apply),
+        Exchange("hdiffpatch-bzip2", Format.HDIFF, create % "bzip2", None),
+        Exchange("hdiffpatch-lzma2", Format.HDIFF, create % "lzma2", None),
+        Exchange("hdiffpatch-sd", Format.HDIFF, f"{create % 'lzma'} -SD", None),
+    ]
+
+
 def _flips() -> list[Exchange]:
     create = "flips --create --exact --%s {source} {target} {patch}"
     apply = "flips --apply --exact {patch} {source} {out}"
@@ -358,6 +369,7 @@ def exchanges() -> list[Exchange]:
             "bspatch {source} {out} {patch}",
         ),
         *_open_vcdiff(),
+        *_hdiffpatch(),
         *_flips(),
         *_ninja1(),
         *_ppf(),
