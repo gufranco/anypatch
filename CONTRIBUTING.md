@@ -41,7 +41,7 @@ Coverage is gated at 100% of statements and branches. When a branch cannot be re
 ```bash
 PYTHONPATH=src ROMJS=<romjs checkout> ROMJS_HARNESS=<harness from ci.yml> \
   JAVAXDELTA=<javaxdelta.jar>:<trove.jar> NINJA="<php command from ci.yml>" \
-  python scripts/interop.py --work <dir>
+  NINJA1="<php command from ci.yml>" python scripts/interop.py --work <dir>
 ```
 
 A failure caused by the other program is declared in `KNOWN` with the reason it was traced to. An entry that stops failing fails the run, so the table cannot go stale.

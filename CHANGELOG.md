@@ -8,6 +8,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - NINJA 1 patches, binary or text and plain or zlib, are read with their CRC32, MD5 and SHA-1 checks, and written in binary with `--format rup1`.
 - DPS patches are read and written. The format has no magic, so a DPS patch is recognised by its `.dps` extension.
+- Patches are exchanged with open-vcdiff and NINJA 1.01 as well.
+
+### Fixes
+
+- A NINJA 1.01 text line holding only an offset is read as an empty record, as NINJA 1.01 writes it.
+
+## 0.6.0
+
+### What's new
+
 - VCDIFF reads open-vcdiff's S version, with interleaved windows and its zero-seeded Adler-32, and application code tables in both the RFC 3284 layout igir reads and the layout open-vcdiff reads. Reference patches from open-vcdiff are in the suite.
 - PAT, the FireFlower format for Neo Geo hacks and the output of `fc /b`, is read and written with `--format pat`. It holds only byte changes, so a size change is refused.
 - A RUP patch that names a ROM type is applied the way NINJA 2.0 applies it: the dump is converted to NINJA's common form before the MD5 check, removing iNES, Famtasia, copier and Lynx headers and undoing UNIF, HiROM, SMD and v64 layouts, and NES, NSRT and Lynx headers go back on afterwards. A dump that does not convert is compared as it is.
