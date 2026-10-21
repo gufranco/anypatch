@@ -3,8 +3,8 @@ class Anypatch < Formula
 
   desc "Read, write, merge and convert binary patches in every documented format"
   homepage "https://github.com/gufranco/anypatch"
-  url "https://github.com/gufranco/anypatch/archive/refs/tags/v0.6.0.tar.gz"
-  sha256 "33ff3991ec0d86fcf2a143338cae612e2c333c14b02b2de7db991bb60a589ad8"
+  url "https://github.com/gufranco/anypatch/archive/refs/tags/v0.7.0.tar.gz"
+  sha256 "5aed2e6415a7be542f7ab6d91060becc34fbe27042c7648e7d26dea109436fd8"
   license "MIT"
   head "https://github.com/gufranco/anypatch.git", branch: "main"
 
