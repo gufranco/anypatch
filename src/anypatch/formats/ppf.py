@@ -159,3 +159,15 @@ def apply(before: bytes, patch: bytes) -> bytes:
     for one in records:
         out[one.offset : one.offset + len(one.data)] = one.data
     return bytes(out)
+
+
+def revert(after: bytes, patch: bytes) -> bytes:
+    layout, records = _parsed(patch)
+    if not layout.undo:
+        raise PpfError("this PPF carries no undo data, so it cannot be reverted")
+    out = bytearray(after)
+    for one in records:
+        _verified(out, one)
+    for one in records:
+        out[one.offset : one.offset + len(one.data)] = one.undo or b""
+    return bytes(out)

@@ -61,6 +61,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | `anypatch apply <source> <patch>... -o <out>` | `apply(source, patches)` | The source with every patch applied, after the conflict check |
 | `anypatch merge <source> <patch>... -o <patch>` | `merge(source, patches, format)` | One patch that does what all of them do |
 | `anypatch convert <source> <patch> -o <patch>` | `convert(source, patch, format)` | The same change in another format |
+| `anypatch revert <image> <patch> -o <out>` | `revert(image, patch)` | The source a patched image came from, for UPS and for PPF with undo data |
 | `anypatch info <patch> [--json]` | `identify(data, name=...)` | Which format a patch is and what binds it to its source |
 | `anypatch formats [--json]` | `formats()` | Every format, whether it is read and written, and its extensions |
 | `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | Whether this installation works: version, Python, platform, the codecs, and a round trip through every format |

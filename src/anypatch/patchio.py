@@ -183,6 +183,10 @@ BUILDERS: dict[Format, Builder] = {
     Format.XDELTA: lambda before, after, _: vcdiff.build(before, after),
 }
 WRITABLE = (*BUILDERS, Format.ZPS)
+REVERTERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
+    Format.UPS: ups.revert,
+    Format.PPF: ppf.revert,
+}
 BY_EXTENSION = (Format.DPS, Format.JOJODIFF, Format.BSP)
 NEVER_WRITTEN = {Format.DLDI: "DLDI drivers"}
 
@@ -259,6 +263,13 @@ def _applied(source: bytes, patch: Patch) -> bytes:
 def apply(source: bytes, patch: Patch) -> bytes:
     try:
         return _applied(source, patch)
+    except FAULTS as error:
+        raise PatchError(f"{patch.name}: {error}") from error
+
+
+def revert(image: bytes, patch: Patch) -> bytes:
+    try:
+        return REVERTERS[patch.format](image, patch.body)
     except FAULTS as error:
         raise PatchError(f"{patch.name}: {error}") from error
 

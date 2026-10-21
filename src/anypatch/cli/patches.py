@@ -120,6 +120,13 @@ def apply_command(
     _guarded(work)
 
 
+def revert_command(image: Path, patch: Path, output: Output) -> None:
+    def work() -> None:
+        _write({output: api.revert(_read(image), _patches([patch])[0])})
+
+    _guarded(work)
+
+
 def merge_command(
     source: Path,
     patch: list[Path],
@@ -193,6 +200,11 @@ def formats_command(*, json_output: Json = False) -> None:
 
 COMMANDS = (
     ("make", make_command, "Write the patch that turns one file into another."),
+    (
+        "revert",
+        revert_command,
+        "Take a patched image back to its source, with UPS or with PPF undo data.",
+    ),
     (
         "apply",
         apply_command,

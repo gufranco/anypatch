@@ -114,3 +114,17 @@ def apply(before: bytes, patch: bytes) -> bytes:
         f"made for a {found.input_size:,}-byte dump with CRC32 {found.input_crc:08X}, "
         f"but this one is {len(before):,} bytes with CRC32 {crc:08X}"
     )
+
+
+def revert(after: bytes, patch: bytes) -> bytes:
+    found = _parsed(patch)
+    crc = zlib.crc32(after)
+    if (len(after), crc) != (found.output_size, found.output_crc):
+        raise UpsError(
+            f"made to produce a {found.output_size:,}-byte image with CRC32 "
+            f"{found.output_crc:08X}, but this one is {len(after):,} bytes with CRC32 {crc:08X}"
+        )
+    swapped = Ups(
+        found.output_size, found.input_size, found.hunks, found.output_crc, found.input_crc
+    )
+    return _forward(after, swapped)

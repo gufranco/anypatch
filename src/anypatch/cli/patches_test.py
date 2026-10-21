@@ -259,6 +259,36 @@ class TestMergeAndConvert:
         assert "fix.ups: made for" in result.output
 
 
+class TestRevert:
+    def test_revert_writes_the_source_a_patch_was_made_from(self, tmp_path):
+        # Arrange
+        after = edited(BASE, 4, b"\x01")
+        body = api.make(BASE, after, Format.UPS)[".ups"]
+        paths = files(tmp_path, after_bin=after, fix_ups=body)
+        out = tmp_path / "back.bin"
+
+        # Act
+        result = run("revert", paths["after_bin"], paths["fix_ups"], "-o", str(out))
+
+        # Assert
+        assert result.exit_code == 0, result.output
+        assert out.read_bytes() == BASE
+
+    def test_revert_refuses_a_patch_with_no_way_back(self, tmp_path):
+        # Arrange
+        body = api.make(BASE, edited(BASE, 4, b"\x01"), Format.IPS)[".ips"]
+        paths = files(tmp_path, base_bin=BASE, fix_ips=body)
+        out = tmp_path / "back.bin"
+
+        # Act
+        result = run("revert", paths["base_bin"], paths["fix_ips"], "-o", str(out))
+
+        # Assert
+        assert result.exit_code == 1
+        assert "IPS patches carry no way back" in result.output
+        assert not out.exists()
+
+
 class TestDescribing:
     def test_info_names_the_format_and_what_binds_it(self, tmp_path):
         # Arrange

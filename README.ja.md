@@ -61,6 +61,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | `anypatch apply <source> <patch>... -o <out>` | `apply(source, patches)` | 衝突の検査のあと、すべてのパッチを当てたソース |
 | `anypatch merge <source> <patch>... -o <patch>` | `merge(source, patches, format)` | すべてのパッチと同じことをするひとつのパッチ |
 | `anypatch convert <source> <patch> -o <patch>` | `convert(source, patch, format)` | 同じ変更を別の形式で |
+| `anypatch revert <image> <patch> -o <out>` | `revert(image, patch)` | パッチ済みイメージの元のソース。UPS と、元のデータを持つ PPF が対象 |
 | `anypatch info <patch> [--json]` | `identify(data, name=...)` | パッチの形式と、ソースへの紐付け方 |
 | `anypatch formats [--json]` | `formats()` | すべての形式と、読み込み・書き出しの可否、拡張子 |
 | `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | このインストールが動くか: バージョン、Python、プラットフォーム、コーデック、各形式の往復 |

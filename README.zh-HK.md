@@ -61,6 +61,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | `anypatch apply <source> <patch>... -o <out>` | `apply(source, patches)` | 經衝突檢查後，套用了所有修補檔的來源檔案 |
 | `anypatch merge <source> <patch>... -o <patch>` | `merge(source, patches, format)` | 一個效果等於所有修補檔之和的修補檔 |
 | `anypatch convert <source> <patch> -o <patch>` | `convert(source, patch, format)` | 以另一種格式表達的同一改動 |
+| `anypatch revert <image> <patch> -o <out>` | `revert(image, patch)` | 已套用修補的映像對應的來源，適用於 UPS 及帶復原資料的 PPF |
 | `anypatch info <patch> [--json]` | `identify(data, name=...)` | 修補檔是甚麼格式，以及甚麼把它綁定到來源 |
 | `anypatch formats [--json]` | `formats()` | 每種格式、能否讀取和寫出，以及副檔名 |
 | `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | 這次安裝能否運作：版本、Python、平台、編解碼器，以及每種格式的往返檢查 |

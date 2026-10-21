@@ -274,3 +274,38 @@ class TestIdenticalFiles:
 
         # Assert
         assert len(patch) == ppf.RECORDS_AT + 4
+
+
+class TestReverting:
+    @pytest.mark.parametrize("image", [b"AXCDE", b"ABCDE"], ids=["patched", "partly-reverted"])
+    def test_undo_data_restores_the_original_bytes_as_applyppf_does(self, image):
+        # Arrange
+        patch = WORKED
+
+        # Act
+        result = ppf.revert(image, patch)
+
+        # Assert
+        assert result == b"ABCD\x00"
+
+    def test_a_patch_without_undo_data_cannot_be_reverted(self):
+        # Arrange
+        patch = ppf3(struct.pack("<QB", 1, 1) + b"X")
+
+        # Act
+        with pytest.raises(ppf.PpfError) as raised:
+            ppf.revert(b"AXCD", patch)
+
+        # Assert
+        assert str(raised.value) == "this PPF carries no undo data, so it cannot be reverted"
+
+    def test_bytes_that_are_neither_patched_nor_original_are_refused(self):
+        # Arrange
+        image = b"AZCDE"
+
+        # Act
+        with pytest.raises(ppf.PpfError) as raised:
+            ppf.revert(image, WORKED)
+
+        # Assert
+        assert "at 0x1 this dump holds 5a" in str(raised.value)

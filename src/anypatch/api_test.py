@@ -203,3 +203,44 @@ class TestChoices:
 
         # Assert
         assert merged.image[:5] == b"\x02\x00\x00\x00\x03"
+
+
+class TestReverting:
+    @pytest.mark.parametrize("kind", [Format.UPS, Format.PPF])
+    def test_a_reversible_patch_takes_its_result_back_to_the_source(self, kind):
+        # Arrange
+        after = edited(BASE, 0x10, b"\x99\x98")
+        body = api.make(BASE, after, kind)[f".{kind.value}"]
+        patch = api.load(body, name=f"fix.{kind.value}")
+
+        # Act
+        result = api.revert(after, patch)
+
+        # Assert
+        assert result == BASE
+
+    def test_a_patch_with_no_way_back_names_its_format(self):
+        # Arrange
+        body = api.make(BASE, edited(BASE, 1, b"\x01"), Format.IPS)[".ips"]
+        patch = api.load(body, name="fix.ips")
+
+        # Act
+        with pytest.raises(PatchError) as raised:
+            api.revert(BASE, patch)
+
+        # Assert
+        assert str(raised.value) == (
+            "fix.ips: IPS patches carry no way back; only UPS and PPF with undo data revert"
+        )
+
+    def test_a_revert_that_does_not_fit_names_the_patch(self):
+        # Arrange
+        body = api.make(BASE, edited(BASE, 1, b"\x01"), Format.UPS)[".ups"]
+        patch = api.load(body, name="fix.ups")
+
+        # Act
+        with pytest.raises(PatchError) as raised:
+            api.revert(BASE, patch)
+
+        # Assert
+        assert str(raised.value).startswith("fix.ups: made to produce")

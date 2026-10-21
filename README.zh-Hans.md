@@ -61,6 +61,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | `anypatch apply <source> <patch>... -o <out>` | `apply(source, patches)` | 经过冲突检查后，应用了所有补丁的源文件 |
 | `anypatch merge <source> <patch>... -o <patch>` | `merge(source, patches, format)` | 一个效果等于所有补丁之和的补丁 |
 | `anypatch convert <source> <patch> -o <patch>` | `convert(source, patch, format)` | 以另一种格式表达的同一改动 |
+| `anypatch revert <image> <patch> -o <out>` | `revert(image, patch)` | 已打补丁的镜像对应的源文件，适用于 UPS 和带撤销数据的 PPF |
 | `anypatch info <patch> [--json]` | `identify(data, name=...)` | 补丁是什么格式，以及什么把它绑定到源文件 |
 | `anypatch formats [--json]` | `formats()` | 每种格式、能否读取和写出，以及扩展名 |
 | `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | 这次安装能否工作：版本、Python、平台、编解码器，以及每种格式的往返检查 |

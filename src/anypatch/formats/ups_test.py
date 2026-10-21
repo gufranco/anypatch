@@ -143,3 +143,37 @@ class TestTheSizeCeiling:
 
         # Assert
         assert "ceiling" in str(raised.value)
+
+
+class TestReverting:
+    def test_a_patched_image_goes_back_to_its_source(self):
+        # Arrange
+        patch = sealed(BODY)
+
+        # Act
+        result = ups.revert(AFTER, patch)
+
+        # Assert
+        assert result == BEFORE
+
+    def test_a_shrinking_patch_restores_the_bytes_it_cut(self):
+        # Arrange
+        before, after = b"ABCDEFGH", b"AB"
+        patch = ups.build(before, after)
+
+        # Act
+        result = ups.revert(after, patch)
+
+        # Assert
+        assert result == before
+
+    def test_an_image_the_patch_did_not_produce_is_refused(self):
+        # Arrange
+        patch = sealed(BODY)
+
+        # Act
+        with pytest.raises(ups.UpsError) as raised:
+            ups.revert(BEFORE, patch)
+
+        # Assert
+        assert "made to produce a 5-byte image" in str(raised.value)

@@ -105,6 +105,15 @@ def apply(
     return conflicts.merge(source, base, changes, ignore=ignore)
 
 
+def revert(image: bytes, patch: Patch) -> bytes:
+    if patch.format not in patchio.REVERTERS:
+        raise PatchError(
+            f"{patch.name}: {NAMES[patch.format][0]} patches carry no way back; "
+            "only UPS and PPF with undo data revert"
+        )
+    return patchio.revert(image, patch)
+
+
 def make(before: bytes, after: bytes, kind: Format, *, description: str = "") -> dict[str, bytes]:
     return patchio.encode(kind, before, after, description=description)
 
