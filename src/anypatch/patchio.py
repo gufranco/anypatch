@@ -11,6 +11,8 @@ from anypatch.formats import (
     bdf,
     bps,
     bsdiff43,
+    bsp,
+    bspvm,
     dldi,
     dps,
     gdiff,
@@ -55,6 +57,7 @@ class Format(StrEnum):
     JOJODIFF = "jdf"
     DLDI = "dldi"
     XDELTA1 = "xdelta1"
+    BSP = "bsp"
     XDELTA = "xdelta"
 
 
@@ -77,6 +80,7 @@ SUFFIXES = {
     ".hdiff": Format.HDIFF,
     ".jdf": Format.JOJODIFF,
     ".dldi": Format.DLDI,
+    ".bsp": Format.BSP,
     ".xdelta": Format.XDELTA,
     ".vcdiff": Format.XDELTA,
     ".xd3": Format.XDELTA,
@@ -103,12 +107,13 @@ FAULTS = (
     jojodiff.JojodiffError,
     dldi.DldiError,
     xdelta1.Xdelta1Error,
+    bspvm.BspError,
     vcdiff.VcdiffError,
     imagesize.ImageSizeError,
 )
 KNOWN = (
     "IPS, IPS32, EBP, ZPS, APS, UPS, BPS, PPF, RUP, NINJA 1, PMSR, BDF, BSDIFF43, GDIFF, PAT, "
-    "DPS, HDiffPatch, VPatch, JojoDiff, DLDI, xdelta 1 or xdelta"
+    "DPS, HDiffPatch, VPatch, JojoDiff, DLDI, BSP, xdelta 1 or xdelta"
 )
 MAGICS = (
     (ups.MAGIC, Format.UPS),
@@ -148,6 +153,7 @@ APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
     Format.JOJODIFF: jojodiff.apply,
     Format.DLDI: dldi.apply,
     Format.XDELTA1: xdelta1.apply,
+    Format.BSP: lambda before, patch: bsp.apply(before, patch),
     Format.XDELTA: vcdiff.apply,
 }
 Builder = Callable[[bytes, bytes, str], bytes]
@@ -170,13 +176,14 @@ BUILDERS: dict[Format, Builder] = {
     Format.VPATCH: lambda before, after, _: vpatch.build(before, after),
     Format.JOJODIFF: lambda before, after, _: jojodiff.build(before, after),
     Format.XDELTA1: lambda before, after, _: xdelta1.build(before, after),
+    Format.BSP: lambda before, after, _: bsp.build(before, after),
     Format.DPS: lambda before, after, text: dps.build(before, after, description=text),
     Format.APS_GBA: lambda before, after, _: apsgba.build(before, after),
     Format.PMSR: lambda before, after, _: pmsr.build(before, after),
     Format.XDELTA: lambda before, after, _: vcdiff.build(before, after),
 }
 WRITABLE = (*BUILDERS, Format.ZPS)
-BY_EXTENSION = (Format.DPS, Format.JOJODIFF)
+BY_EXTENSION = (Format.DPS, Format.JOJODIFF, Format.BSP)
 NEVER_WRITTEN = {Format.DLDI: "DLDI drivers"}
 
 

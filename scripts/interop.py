@@ -424,6 +424,9 @@ def exchanges() -> list[Exchange]:
         ),
         *_xdelta1(),
         Exchange(
+            "bsppatch", Format.BSP, None, 'node "$BSP_HARNESS" "$BSPPATCH" {patch} {source} {out}'
+        ),
+        Exchange(
             "javaxdelta",
             Format.GDIFF,
             "java -cp $JAVAXDELTA com.nothome.delta.Delta {source} {target} {patch}",

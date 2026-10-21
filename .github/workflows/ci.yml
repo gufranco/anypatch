@@ -643,6 +643,34 @@ jobs:
           PYTHONPATH: src
         run: python scripts/interop.py --tool xdelta1 --work "$RUNNER_TEMP/interop"
 
+  bsp:
+    name: bsppatch.js applies every boundary BSP anypatch writes
+    runs-on: ubuntu-26.04
+    env:
+      BSP_COMMIT: 1553f2e8a4056ef30066f812b0f568163e17e8bf
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Fetch the reference engine
+        run: |
+          git clone --quiet https://github.com/aaaaaa123456789/bsp.git "$RUNNER_TEMP/bsp"
+          git -C "$RUNNER_TEMP/bsp" checkout --quiet "$BSP_COMMIT"
+
+      - name: Apply the boundary patches with bsppatch.js
+        env:
+          PYTHONPATH: src
+          BSP_HARNESS: ${{ github.workspace }}/scripts/bsp/harness.js
+          BSPPATCH: ${{ runner.temp }}/bsp/bsppatch.js
+        run: python scripts/interop.py --tool bsppatch --work "$RUNNER_TEMP/interop"
+
   gdiff:
     name: javaxdelta and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04

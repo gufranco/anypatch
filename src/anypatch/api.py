@@ -33,6 +33,7 @@ NAMES = {
         "xdelta 1.1",
         "MD5 and size of the source and of the result, unless made with --noverify",
     ),
+    Format.BSP: ("BSP", "whatever its script checks; a BSP written here checks the source SHA-1"),
     Format.PAT: ("PAT, FireFlower", "the original value of every byte it changes"),
     Format.XDELTA: ("xdelta", "an Adler-32 checksum of every window, when present"),
 }
