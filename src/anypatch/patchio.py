@@ -153,7 +153,7 @@ APPLIERS: dict[Format, Callable[[bytes, bytes], bytes]] = {
     Format.JOJODIFF: jojodiff.apply,
     Format.DLDI: dldi.apply,
     Format.XDELTA1: xdelta1.apply,
-    Format.BSP: lambda before, patch: bsp.apply(before, patch),
+    Format.BSP: bsp.apply,
     Format.XDELTA: vcdiff.apply,
 }
 Builder = Callable[[bytes, bytes, str], bytes]
@@ -197,6 +197,7 @@ class Patch:
     format: Format
     body: bytes
     binding: bytes | None
+    choices: tuple[int, ...] = ()
 
 
 def format_of(path: str | Path) -> Format:
@@ -250,6 +251,8 @@ def read(path: str | Path) -> Patch:
 def _applied(source: bytes, patch: Patch) -> bytes:
     if patch.format == Format.ZPS:
         return zps.apply(source, patch.body, patch.binding)
+    if patch.format == Format.BSP:
+        return bsp.apply(source, patch.body, choices=patch.choices)
     return APPLIERS[patch.format](source, patch.body)
 
 

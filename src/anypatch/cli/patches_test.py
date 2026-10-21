@@ -6,6 +6,7 @@ from typer.testing import CliRunner
 
 from anypatch import api
 from anypatch.cli.main import app
+from anypatch.formats import bsp_vectors_test_support as vectors
 from anypatch.patchio import WRITABLE, Format
 
 RUNNER = CliRunner()
@@ -187,6 +188,31 @@ class TestApply:
         # Assert
         assert result.exit_code == 0
         assert "already in     fix.ups" in result.output
+
+
+class TestBspMenus:
+    def test_a_choice_answers_the_menu_of_a_bsp(self, tmp_path):
+        # Arrange
+        paths = files(tmp_path, base_bin=vectors.INPUT, menu_bsp=vectors.PATCHES["menu"])
+        out = tmp_path / "out.bin"
+
+        # Act
+        result = run("apply", paths["base_bin"], paths["menu_bsp"], "--choice", "1", "-o", str(out))
+
+        # Assert
+        assert result.exit_code == 0, result.output
+        assert out.read_bytes() == vectors.RESULTS["menu"]
+
+    def test_a_menu_without_a_choice_lists_its_options(self, tmp_path):
+        # Arrange
+        paths = files(tmp_path, base_bin=vectors.INPUT, menu_bsp=vectors.PATCHES["menu"])
+
+        # Act
+        result = run("apply", paths["base_bin"], paths["menu_bsp"], "-o", str(tmp_path / "o"))
+
+        # Assert
+        assert result.exit_code == 1
+        assert "choose between: First, Second, Third" in result.output
 
 
 class TestMergeAndConvert:

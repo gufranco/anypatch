@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 from collections.abc import Callable
 from pathlib import Path
@@ -27,6 +28,10 @@ Clean = Annotated[
     typer.Option("--clean", help="the clean source, when the input already carries a patch"),
 ]
 Json = Annotated[bool, typer.Option("--json", help="print the answer as JSON")]
+Choices = Annotated[
+    list[int] | None,
+    typer.Option("--choice", help="the option a BSP menu takes; repeat it for each menu in turn"),
+]
 
 
 class RefusedError(Exception):
@@ -44,10 +49,11 @@ def _read(path: Path) -> bytes:
         raise RefusedError(f"cannot read {path}: {error.strerror or error}") from error
 
 
-def _patches(paths: list[Path]) -> list[Patch]:
+def _patches(paths: list[Path], choices: list[int] | None = None) -> list[Patch]:
     for path in paths:
         _read(path)
-    return [patchio.read(path) for path in paths]
+    taken = tuple(choices or ())
+    return [dataclasses.replace(patchio.read(path), choices=taken) for path in paths]
 
 
 def _kind(target: Path, chosen: Format | None) -> Format:
@@ -97,10 +103,17 @@ def make_command(
     _guarded(work)
 
 
-def apply_command(source: Path, patch: list[Path], output: Output, *, clean: Clean = None) -> None:
+def apply_command(
+    source: Path,
+    patch: list[Path],
+    output: Output,
+    *,
+    clean: Clean = None,
+    choice: Choices = None,
+) -> None:
     def work() -> None:
         base = _read(clean) if clean is not None else None
-        merged = api.apply(_read(source), _patches(patch), clean=base)
+        merged = api.apply(_read(source), _patches(patch, choice), clean=base)
         _report(merged)
         _write({output: merged.image})
 

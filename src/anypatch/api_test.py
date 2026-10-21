@@ -2,6 +2,7 @@ import pytest
 
 from anypatch import api
 from anypatch.conflicts import ConflictError
+from anypatch.formats import bsp_vectors_test_support as vectors
 from anypatch.patchio import Format, PatchError
 
 BASE = bytes((at * 7) & 0xFF for at in range(0x400))
@@ -190,3 +191,15 @@ class TestWriting:
         assert files[".hdr"] == BASE[:64]
         loaded = api.load(files[".zps"], name="fix.zps", binding=files[".hdr"])
         assert loaded.binding == BASE[:64]
+
+
+class TestChoices:
+    def test_a_loaded_bsp_carries_the_choices_its_menus_take(self):
+        # Arrange
+        patch = api.load(vectors.PATCHES["menu"], name="menu.bsp", choices=(2,))
+
+        # Act
+        merged = api.apply(vectors.INPUT, [patch])
+
+        # Assert
+        assert merged.image[:5] == b"\x02\x00\x00\x00\x03"

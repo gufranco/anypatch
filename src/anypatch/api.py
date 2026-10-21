@@ -78,8 +78,10 @@ def identify(data: bytes, *, name: str) -> Format:
     return patchio.identify(data, name=name)
 
 
-def load(data: bytes, *, name: str, binding: bytes | None = None) -> Patch:
-    return Patch(name, identify(data, name=name), data, binding)
+def load(
+    data: bytes, *, name: str, binding: bytes | None = None, choices: tuple[int, ...] = ()
+) -> Patch:
+    return Patch(name, identify(data, name=name), data, binding, choices)
 
 
 def _result(base: bytes, one: Patch, hinted: bool) -> bytes:

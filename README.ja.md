@@ -66,7 +66,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | このインストールが動くか: バージョン、Python、プラットフォーム、コーデック、各形式の往復 |
 | `anypatch --version` | `anypatch.version.VERSION` | インストールされているバージョン |
 
-`apply` と `merge` の `--clean <file>` は、入力にすでにパッチが当たっているときのクリーンなソースを指定します。`--description` は APS、BPS、EBP、PPF、RUP のパッチが持つ文字列を設定します。出力はすべて書き込む前に作るため、拒否された場合はファイルが残りません。エラーは標準エラー出力に出し、終了コードは 1 です。
+`apply` と `merge` の `--clean <file>` は、入力にすでにパッチが当たっているときのクリーンなソースを指定します。`--description` は APS、BPS、EBP、PPF、RUP のパッチが持つ文字列を設定します。`apply` の `--choice <n>` は BSP のメニューに順番に答えます。出力はすべて書き込む前に作るため、拒否された場合はファイルが残りません。エラーは標準エラー出力に出し、終了コードは 1 です。
 
 ## 形式
 
@@ -93,7 +93,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | JojoDiff | 読む。マジックがないため `.jdf` 拡張子で判別 | `--format jdf` | `.jdf` | なし |
 | DLDI | DS アプリの DLDI セクションにドライバを注入し、dlditool と同じく再配置 | いいえ。ドライバはビルドするもので差分ではない | `.dldi` | アプリが確保した、ドライバ以上の大きさの DLDI セクション |
 | xdelta 1.1 | `%XDZ004%`。無圧縮または gzip、MD5 検査の有無を問わない | `%XDZ004%`、無圧縮、`--format xdelta1` | `.xdelta` | 元と結果の MD5 とサイズ。`--noverify` で作られたものは除く。1.1 より古いパッチと gzip 展開後のファイル間で作られたパッチは名前を挙げて拒否 |
-| BSP | マジックがないため `.bsp` 拡張子で判別。仕様 0.6 の全命令、入れ子のパッチ、埋め込み IPS。メニューは `anypatch.formats.bsp.apply(choices=...)` で選択し、それ以外では選択肢を挙げて拒否 | ソースの SHA-1 を確認して各変更を書くスクリプト | `.bsp` | スクリプトが確認するもの。ここで書く BSP はソースの SHA-1 |
+| BSP | マジックがないため `.bsp` 拡張子で判別。仕様 0.6 の全命令、入れ子のパッチ、埋め込み IPS。メニューは `apply` の `--choice` か `anypatch.api.load` の `choices` で選択し、指定がなければ選択肢を挙げて拒否 | ソースの SHA-1 を確認して各変更を書くスクリプト | `.bsp` | スクリプトが確認するもの。ここで書く BSP はソースの SHA-1 |
 | xdelta、VCDIFF | はい | はい | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | パッチが持つ場合、各ウィンドウの Adler-32 チェックサム。xdelta3 の出力を、二次圧縮なし、LZMA、DJW、FGK のいずれでも読み込みます。open-vcdiff のインターリーブとチェックサム付きの S 版、および RFC 3284 と open-vcdiff の両方の形式のアプリケーション定義コード表も読みます |
 
 形式は中身で判定し、`.zps` か `.ip1` という名前の IPS だけを ZPS として読みます。各パッチはクリーンなソースにそれぞれ単独で当て、変わるバイトを比べます。同じバイトに違う値を書く 2 つのパッチは、すべての範囲と両方の値を示して拒否し、同じ値の書き込みは統合します。ソースのチェックサムを持つ形式のパッチは、ほかのファイルには両方の値を示して拒否し、ソースにすでに結果が入っていれば適用済みと報告します。1 GiB とソースのどちらよりも大きい結果を主張するパッチは、何も確保する前に拒否します。

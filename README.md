@@ -66,7 +66,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | `anypatch doctor [--json]` | `anypatch.doctor.diagnose()` | Whether this installation works: version, Python, platform, the codecs, and a round trip through every format |
 | `anypatch --version` | `anypatch.version.VERSION` | The installed version |
 
-`--clean <file>` on `apply` and `merge` names the clean source when the input already carries a patch. `--description` sets the text an APS, BPS, EBP, PPF or RUP patch carries. Every output is computed before anything is written, so a refusal leaves no file behind. Errors go to standard error and the exit code is 1.
+`--clean <file>` on `apply` and `merge` names the clean source when the input already carries a patch. `--description` sets the text an APS, BPS, EBP, PPF or RUP patch carries. `--choice <n>` on `apply` answers a BSP menu, once per menu in order. Every output is computed before anything is written, so a refusal leaves no file behind. Errors go to standard error and the exit code is 1.
 
 ## Formats
 
@@ -93,7 +93,7 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | JojoDiff | yes, by the `.jdf` extension, since the format has no magic | yes, with `--format jdf` | `.jdf` | Nothing |
 | DLDI | yes, injecting a driver into the DLDI section of a DS app and relocating it as dlditool does | no, a driver is built, not diffed | `.dldi` | A DLDI section the app reserves, at least as large as the driver |
 | xdelta 1.1 | `%XDZ004%`, plain or gzip, with or without its MD5 checks | `%XDZ004%`, plain, with `--format xdelta1` | `.xdelta` | MD5 and size of the source and of the result, unless made with `--noverify`. Patches older than 1.1 and patches made between gzip-decompressed files are refused by name |
-| BSP | yes, by the `.bsp` extension, since the format has no magic: every instruction of the 0.6 specification, nested patches and embedded IPS. A menu is answered through `anypatch.formats.bsp.apply(choices=...)`; elsewhere it is refused with its options listed | yes, a script that checks the source SHA-1 and writes each change | `.bsp` | Whatever its script checks; a BSP written here checks the source SHA-1 |
+| BSP | yes, by the `.bsp` extension, since the format has no magic: every instruction of the 0.6 specification, nested patches and embedded IPS. A menu takes the next `--choice` given to `apply`, or `choices` in `anypatch.api.load`; without one it is refused with its options listed | yes, a script that checks the source SHA-1 and writes each change | `.bsp` | Whatever its script checks; a BSP written here checks the source SHA-1 |
 | xdelta, VCDIFF | yes | yes | `.xdelta`, `.vcdiff`, `.xd3`, `.delta` | An Adler-32 checksum of every window, when present. Reads xdelta3 output with no secondary compression, LZMA, DJW or FGK, open-vcdiff's interleaved and checksummed S version, and application code tables in the RFC 3284 and open-vcdiff layouts |
 
 The contents decide the format; only an IPS body named `.zps` or `.ip1` is read as ZPS. Every patch is applied to the clean source on its own, and the bytes each one changes are compared. Two patches that write different values to one byte are refused, with every range and both values listed; identical writes merge. A patch whose format carries a source checksum is refused on any other file, naming both values, and when the source already holds the result it is reported as already applied. A patch that claims a result larger than both 1 GiB and its source is refused before anything is allocated.
