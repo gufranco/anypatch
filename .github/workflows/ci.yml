@@ -474,7 +474,12 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq php-cli
-          curl -sfL -o "$RUNNER_TEMP/ninja1.tar" "$NINJA_ARCHIVE/$NINJA_FILE"
+          curl -sfL -o "$RUNNER_TEMP/ninja1.download" "$NINJA_ARCHIVE/$NINJA_FILE"
+          if [ "$(head -c 2 "$RUNNER_TEMP/ninja1.download" | od -An -tx1 | tr -d ' ')" = "1f8b" ]; then
+            gunzip -c "$RUNNER_TEMP/ninja1.download" > "$RUNNER_TEMP/ninja1.tar"
+          else
+            cp "$RUNNER_TEMP/ninja1.download" "$RUNNER_TEMP/ninja1.tar"
+          fi
           echo "${NINJA1_SHA256}  $RUNNER_TEMP/ninja1.tar" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/ninja1"
           tar -xf "$RUNNER_TEMP/ninja1.tar" -C "$RUNNER_TEMP/ninja1" --strip-components=1 ninja-1.01php/ninja.php
@@ -612,6 +617,8 @@ jobs:
     runs-on: ubuntu-26.04
     env:
       XDELTA1_COMMIT: 346b70280c8234a327a761e52610355628427341
+      XDELTA1_SHA256: a0e043e60c7c7b002c0b628748eea82e877a5d429de1044a2213464d1dd24bac
+      XDELTA1_SNAPSHOT: https://git.tizen.org/cgit/platform/upstream/xdelta1/snapshot
     steps:
       - uses: actions/checkout@v7
 
@@ -624,10 +631,17 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq libglib2.0-dev zlib1g-dev
           cd "$RUNNER_TEMP"
-          git clone --quiet https://git.tizen.org/cgit/platform/upstream/xdelta1 xdelta1
-          git -C xdelta1 checkout --quiet "$XDELTA1_COMMIT"
-          mkdir -p bin config
-          printf '#define HAVE_GETTIMEOFDAY 1\n#define TIME_WITH_SYS_TIME 1\n#define STDC_HEADERS 1\n#define VERSION "1.1.4"\n#define PACKAGE "xdelta"\n' > config/config.h
+          curl -sfL -o xdelta1.tar.gz "$XDELTA1_SNAPSHOT/xdelta1-$XDELTA1_COMMIT.tar.gz"
+          echo "$XDELTA1_SHA256  xdelta1.tar.gz" | sha256sum -c -
+          mkdir -p bin config xdelta1
+          tar -xzf xdelta1.tar.gz -C xdelta1 --strip-components=1
+          {
+            echo "#define HAVE_GETTIMEOFDAY 1"
+            echo "#define TIME_WITH_SYS_TIME 1"
+            echo "#define STDC_HEADERS 1"
+            echo '#define VERSION "1.1.4"'
+            echo '#define PACKAGE "xdelta"'
+          } > config/config.h
           cd xdelta1
           # shellcheck disable=SC2046
           cc -O1 -w -std=gnu89 -DHAVE_CONFIG_H -I"$RUNNER_TEMP/config" -I. -Ilibedsio \
