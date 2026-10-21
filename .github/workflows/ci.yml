@@ -671,6 +671,31 @@ jobs:
           BSPPATCH: ${{ runner.temp }}/bsp/bsppatch.js
         run: python scripts/interop.py --tool bsppatch --work "$RUNNER_TEMP/interop"
 
+  igir:
+    name: igir applies every boundary patch anypatch writes
+    runs-on: ubuntu-26.04
+    env:
+      IGIR_VERSION: 5.7.2
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install the reference tool
+        run: npm install --prefix "$RUNNER_TEMP/igir" --no-audit --no-fund --ignore-scripts "igir@$IGIR_VERSION"
+
+      - name: Apply the boundary patches with igir
+        env:
+          PYTHONPATH: src
+          IGIR: ${{ runner.temp }}/igir/node_modules/igir
+        run: python scripts/interop.py --tool igir --work "$RUNNER_TEMP/interop"
+
   gdiff:
     name: javaxdelta and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04

@@ -87,6 +87,7 @@ class TestNothingSelected:
 
 
 def module():
+    sys.path.insert(0, str(SCRIPT.parent))
     spec = importlib.util.spec_from_file_location("interop", SCRIPT)
     loaded = importlib.util.module_from_spec(spec)
     sys.modules["interop"] = loaded

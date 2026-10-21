@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from interop_known import KNOWN, OURS, THEIRS
+
 from anypatch import api
 from anypatch import boundaries_test_support as boundaries
 from anypatch.formats import dldi_vectors_test_support as dldi_cases
@@ -19,11 +21,21 @@ TIMEOUT = 300
 OPEN_VCDIFF_TIMEOUT = 120
 LOG_TAIL = 2000
 REPORT_WIDTH = 600
-OURS = "ours"
-THEIRS = "theirs"
 ROMJS_WRITES = (Format.IPS, Format.EBP, Format.UPS, Format.BPS, Format.PPF, Format.APS, Format.RUP)
 ROMJS_READS = (*ROMJS_WRITES, Format.BDF, Format.APS_GBA, Format.PMSR)
 XDELTA_CODERS = ("none", "lzma", "djw", "fgk")
+IGIR_READS = (
+    Format.IPS,
+    Format.EBP,
+    Format.APS,
+    Format.APS_GBA,
+    Format.UPS,
+    Format.BPS,
+    Format.PPF,
+    Format.RUP,
+    Format.DPS,
+    Format.XDELTA,
+)
 NOTHING = "nothing matched the --tool and --case filters"
 DLDITOOL = "dlditool"
 
@@ -52,216 +64,6 @@ class Mark(StrEnum):
     FAIL = "FAIL"
     REFUSED = "REFUSED"
     KNOWN = "KNOWN"
-
-
-ROMJS_EMPTY = "RomPatcher.js cannot open an empty file: BinFile.slice throws"
-ROMJS_BZ2 = (
-    "RomPatcher.js loses the last bytes of a BDF diff that runs to the end of the source; "
-    "it misreads bsdiff's own patch for the same files"
-)
-ROMJS_IPS32 = "RomPatcher.js does not read IPS32"
-ROMJS_IPS_BIG = "RomPatcher.js refuses IPS and EBP past 16 MiB"
-ROMJS_TRUNCATE_ZERO = "RomPatcher.js treats an IPS truncation to 0 bytes as no truncation"
-ROMJS_TRUNCATE_WRAP = "RomPatcher.js writes a 16 MiB truncation into 3 bytes, where it wraps to 0"
-ROMJS_NO_SHRINK = "RomPatcher.js writes PPF and EBP for a shrink, which neither can express"
-ROMJS_GBA_SIZE = "RomPatcher.js reads APS for GBA only when the size stays the same"
-ROMJS_GBA_PARTIAL = (
-    "RomPatcher.js checks the CRC16 of a partial last APS for GBA block without its zero "
-    "padding, where UniPatcher and anypatch pad it"
-)
-IPS32_CASES = (
-    "ips-past-limit-high-change",
-    "ips-shrink-to-limit",
-    "pmsr-base-edit",
-    "pmsr-base-grow",
-    "xdelta-window-0x1000001",
-)
-GBA_RESIZED = (
-    "data-to-empty",
-    "empty-to-data",
-    "grow-by-one",
-    "ips-grow-to-limit",
-    "pmsr-base-grow",
-    "varint-0x3fff",
-    "varint-0x4000",
-    "varint-0x7f",
-    "varint-0x80",
-)
-FLIPS_IPS32 = "Flips does not read IPS32"
-FLIPS_IPS_BIG = "Flips refuses IPS for a file over 16 MiB, whatever the changes"
-FLIPS_EOF_RUN = "Flips never finishes an IPS whose run starts at the EOF offset"
-FLIPS_EMPTY_BPS = "Flips writes a BPS for an empty target that it reports as broken itself"
-NINJA_ZERO = (
-    "NINJA writes 0 as a zero-width number, and on PHP 8 its fread of zero bytes throws where "
-    "PHP 5 returned nothing"
-)
-MAKEPPF_SIZE = "MakePPF compares only the length both files share, so it drops a size change"
-PPF_RESIZED = (
-    "data-to-empty",
-    "empty-to-data",
-    "grow-by-one",
-    "ips-grow-to-limit",
-    "ips-shrink-below-limit",
-    "ips-shrink-to-limit",
-    "pmsr-base-grow",
-    "shrink-by-one",
-    "varint-0x3fff",
-    "varint-0x4000",
-    "varint-0x7f",
-    "varint-0x80",
-)
-OPEN_VCDIFF_ADLER = (
-    "open-vcdiff reads strict RFC 3284, not the per-window Adler-32 xdelta3 writes by default; "
-    "anypatch writes that checksum the same way, and open-vcdiff rejects xdelta3's patch too"
-)
-OPEN_VCDIFF_EMPTY = "open-vcdiff encode never finishes when the target is empty"
-OPEN_VCDIFF_CHECKSUMMED = (
-    "identical",
-    "empty-to-data",
-    "first-byte",
-    "last-byte",
-    "grow-by-one",
-    "shrink-by-one",
-    "scattered",
-    "long-run",
-    "long-literal",
-    "varint-0x7f",
-    "varint-0x80",
-    "varint-0x3fff",
-    "varint-0x4000",
-    "ips-eof-offset",
-    "ips-run-at-eof-offset",
-    "ips-last-offset",
-    "ips-grow-to-limit",
-    "ips-past-limit-low-change",
-    "ips-past-limit-high-change",
-    "ips-shrink-to-limit",
-    "ips-shrink-below-limit",
-    "aps-record-255",
-    "aps-record-256",
-    "gba-block-edge",
-    "gba-partial-block",
-    "ips-record-65535",
-    "ips-record-65536",
-    "gdiff-data-246",
-    "gdiff-data-247",
-    "gdiff-data-65535",
-    "gdiff-data-65536",
-    "gdiff-copy-255",
-    "gdiff-copy-256",
-    "gdiff-copy-65535",
-    "gdiff-copy-65536",
-    "gdiff-copy-past-ushort",
-    "xdelta-window-0x7fffff",
-    "xdelta-window-0x800000",
-    "xdelta-window-0x800001",
-    "xdelta-window-0x1000001",
-    "pmsr-base-edit",
-    "pmsr-base-grow",
-)
-NINJA1_TOOLS = ("ninja1", "ninja1-bz", "ninja1-text", "ninja1-tz")
-NINJA1_EMPTY = "NINJA 1.01 on PHP 8 fails on an empty file, where its fread of zero bytes throws"
-XDELTA1_EMPTY = (
-    "xdelta1 patch exits 2 without a message when the result is empty, "
-    "on the patch xdelta1 delta writes for that case as well"
-)
-NINJA1_SHRINK = "NINJA 1 cannot shrink a file, and NINJA 1.01 writes the patch anyway"
-NINJA1_LARGE = (
-    "NINJA 1.01 writes a record 0x200 bytes before its change in a file over 30 MiB, "
-    "such as 0x27FFDF8 for a change at 0x27FFFF8"
-)
-KNOWN: Mapping[tuple[str, Format, str, str], str] = {
-    ("ninja1", Format.RUP1, OURS, "empty-to-data"): NINJA1_EMPTY,
-    ("xdelta1", Format.XDELTA1, OURS, "data-to-empty"): XDELTA1_EMPTY,
-    **{
-        (tool, Format.RUP1, THEIRS, case): reason
-        for tool in NINJA1_TOOLS
-        for case, reason in (
-            ("empty-to-data", NINJA1_EMPTY),
-            ("data-to-empty", NINJA1_EMPTY),
-            ("shrink-by-one", NINJA1_SHRINK),
-            ("ips-shrink-to-limit", NINJA1_SHRINK),
-            ("ips-shrink-below-limit", NINJA1_SHRINK),
-            ("pmsr-base-edit", NINJA1_LARGE),
-            ("pmsr-base-grow", NINJA1_LARGE),
-        )
-    },
-    **{
-        ("open-vcdiff", Format.XDELTA, OURS, case): OPEN_VCDIFF_ADLER
-        for case in OPEN_VCDIFF_CHECKSUMMED
-    },
-    **{
-        (tool, Format.XDELTA, THEIRS, "data-to-empty"): OPEN_VCDIFF_EMPTY
-        for tool in ("open-vcdiff", "open-vcdiff-sdch", "open-vcdiff-matches")
-    },
-    **{("flips", Format.IPS, OURS, case): FLIPS_IPS32 for case in IPS32_CASES},
-    **{
-        ("flips", Format.IPS, THEIRS, case): FLIPS_IPS_BIG
-        for case in (*IPS32_CASES, "ips-past-limit-low-change")
-    },
-    ("flips", Format.IPS, THEIRS, "ips-run-at-eof-offset"): FLIPS_EOF_RUN,
-    ("flips", Format.BPS, THEIRS, "data-to-empty"): FLIPS_EMPTY_BPS,
-    ("ninja", Format.RUP, THEIRS, "identical"): "NINJA deletes the patch for identical files",
-    **{
-        ("ninja", Format.RUP, direction, case): NINJA_ZERO
-        for direction, case in (
-            (OURS, "empty-to-data"),
-            (OURS, "data-to-empty"),
-            (OURS, "first-byte"),
-            (THEIRS, "empty-to-data"),
-            (THEIRS, "data-to-empty"),
-        )
-    },
-    **{
-        (tool, Format.PPF, THEIRS, case): MAKEPPF_SIZE
-        for tool in ("makeppf3", "makeppf3-plain")
-        for case in PPF_RESIZED
-    },
-    ("bsdiff", Format.BDF, THEIRS, "empty-to-data"): "bsdiff cannot mmap an empty file",
-    ("bsdiff", Format.BDF, THEIRS, "data-to-empty"): "bsdiff cannot mmap an empty file",
-    ("xdelta3", Format.XDELTA, OURS, "data-to-empty"): "xdelta3 refuses to write an empty output",
-    ("romjs", Format.UPS, OURS, "empty-to-data"): ROMJS_EMPTY,
-    ("romjs", Format.BPS, OURS, "empty-to-data"): ROMJS_EMPTY,
-    ("romjs", Format.RUP, OURS, "empty-to-data"): ROMJS_EMPTY,
-    ("romjs", Format.RUP, THEIRS, "empty-to-data"): ROMJS_EMPTY,
-    ("romjs", Format.RUP, THEIRS, "data-to-empty"): ROMJS_EMPTY,
-    ("romjs", Format.IPS, OURS, "data-to-empty"): ROMJS_TRUNCATE_ZERO,
-    ("romjs", Format.IPS, THEIRS, "data-to-empty"): ROMJS_TRUNCATE_ZERO,
-    ("romjs", Format.IPS, THEIRS, "ips-shrink-to-limit"): ROMJS_TRUNCATE_WRAP,
-    ("romjs", Format.EBP, THEIRS, "data-to-empty"): ROMJS_NO_SHRINK,
-    **{
-        ("romjs", Format.PPF, THEIRS, case): ROMJS_NO_SHRINK
-        for case in (
-            "data-to-empty",
-            "shrink-by-one",
-            "ips-shrink-below-limit",
-            "ips-shrink-to-limit",
-        )
-    },
-    **{("romjs", Format.IPS, OURS, case): ROMJS_IPS32 for case in IPS32_CASES},
-    **{
-        ("romjs", kind, THEIRS, case): ROMJS_IPS_BIG
-        for kind in (Format.IPS, Format.EBP)
-        for case in IPS32_CASES
-        if case != "ips-shrink-to-limit"
-    },
-    ("romjs", Format.EBP, THEIRS, "ips-shrink-to-limit"): ROMJS_NO_SHRINK,
-    **{("romjs", Format.APS_GBA, OURS, case): ROMJS_GBA_SIZE for case in GBA_RESIZED},
-    **{
-        ("romjs", Format.APS_GBA, OURS, case): ROMJS_GBA_PARTIAL
-        for case in ("xdelta-window-0x7fffff", "xdelta-window-0x800001", "xdelta-window-0x1000001")
-    },
-    **{
-        ("romjs", Format.BDF, OURS, case): ROMJS_BZ2
-        for case in (
-            "ips-grow-to-limit",
-            "ips-shrink-below-limit",
-            "shrink-by-one",
-            "varint-0x3fff",
-            "xdelta-window-0x7fffff",
-        )
-    },
-}
 
 
 def verdict(outcome: Outcome) -> tuple[Mark, str]:
@@ -356,6 +158,11 @@ def _xdelta1() -> list[Exchange]:
     ]
 
 
+def _igir() -> list[Exchange]:
+    apply = 'node scripts/igir/harness.mjs "$IGIR" {patch} {source} {out}'
+    return [Exchange("igir", kind, None, apply) for kind in IGIR_READS]
+
+
 def _flips() -> list[Exchange]:
     create = "flips --create --exact --%s {source} {target} {patch}"
     apply = "flips --apply --exact {patch} {source} {out}"
@@ -423,6 +230,7 @@ def exchanges() -> list[Exchange]:
             "jpatch {source} {patch} {out}",
         ),
         *_xdelta1(),
+        *_igir(),
         Exchange(
             "bsppatch", Format.BSP, None, 'node "$BSP_HARNESS" "$BSPPATCH" {patch} {source} {out}'
         ),

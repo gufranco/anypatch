@@ -36,18 +36,19 @@ Coverage is gated at 100% of statements and branches. When a branch cannot be re
 
 `src/anypatch/boundaries_test_support.py` generates files from fixed seeds at every edge a format has: the IPS 16 MiB wall and its `EOF` offset, record-length limits, 64 KiB GBA blocks, GDIFF command widths, VCDIFF windows, and a 40 MiB image whose CRC32 is forced to Paper Mario's so PMSR can be written. The content is random but known: each case's size and SHA-256 are pinned in `RECORDED`. `boundaries_test.py` writes every format for every case and checks the target comes back, and each refusal a format must make is declared in `REFUSED` with its message.
 
-`scripts/interop.py` exchanges the same files with programs that read or write each format, in both directions: xdelta3, bsdiff and bspatch, bsdiff4, mendsley's bsdiff and bspatch for BSDIFF43, open-vcdiff, HDiffPatch, NSIS VPatch's GenPat and patcher, JojoDiff, dlditool, xdelta 1.1, bsppatch.js, Flips, ApplyPPF and MakePPF, NINJA 1.01, NINJA 2.0, javaxdelta and RomPatcher.js. Each CI interop job installs or builds one of them at a pinned version and runs it with `--tool`; the job in [ci.yml](.github/workflows/ci.yml) is the recipe for running the same tool locally. With every tool on the path:
+`scripts/interop.py` exchanges the same files with programs that read or write each format, in both directions: xdelta3, bsdiff and bspatch, bsdiff4, mendsley's bsdiff and bspatch for BSDIFF43, open-vcdiff, HDiffPatch, NSIS VPatch's GenPat and patcher, JojoDiff, dlditool, xdelta 1.1, bsppatch.js, igir, Flips, ApplyPPF and MakePPF, NINJA 1.01, NINJA 2.0, javaxdelta and RomPatcher.js. Each CI interop job installs or builds one of them at a pinned version and runs it with `--tool`; the job in [ci.yml](.github/workflows/ci.yml) is the recipe for running the same tool locally. With every tool on the path:
 
 ```bash
 PYTHONPATH=src ROMJS=<romjs checkout> ROMJS_HARNESS=<harness from ci.yml> \
   JAVAXDELTA=<javaxdelta.jar>:<trove.jar> NINJA="<php command from ci.yml>" \
   NINJA1="<php command from ci.yml>" BSP_HARNESS=scripts/bsp/harness.js \
-  BSPPATCH=<bsp checkout>/bsppatch.js python scripts/interop.py --work <dir>
+  BSPPATCH=<bsp checkout>/bsppatch.js IGIR=<igir package folder> \
+  python scripts/interop.py --work <dir>
 ```
 
 DLDI is not a diff, so `--tool dlditool` runs the generated cases in `src/anypatch/formats/dldi_vectors_test_support.py` through dlditool instead of the boundary files.
 
-A failure caused by the other program is declared in `KNOWN` with the reason it was traced to. An entry that stops failing fails the run, so the table cannot go stale.
+A failure caused by the other program is declared in `KNOWN`, in [interop_known.py](scripts/interop_known.py), with the reason it was traced to. An entry that stops failing fails the run, so the table cannot go stale.
 
 ## Things this project will not accept
 

@@ -15,10 +15,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - xdelta 1.1 patches are read, plain or gzip-compressed and with or without their MD5 checks, and written plain with `--format xdelta1`. Patches from xdelta 1.0 and older, and patches made between gzip-decompressed files, are refused by name.
 - BSP patches run on a full engine for the 0.6 specification, including nested patches, embedded IPS and the message buffer, and are written as a script that checks the source SHA-1 and writes each change. The format has no magic, so a BSP is recognised by its `.bsp` extension. A menu takes the next `--choice` given to `anypatch apply`, or `choices` in `anypatch.api.load`; without one it is refused with its options listed.
 - `anypatch revert` and `api.revert` take a patched image back to its source with a UPS patch, which works both ways, or a PPF that carries undo data, giving what ApplyPPF's undo gives. Other formats are refused by name, since they hold no way back.
-- Patches are exchanged with open-vcdiff, NINJA 1.01, HDiffPatch, NSIS VPatch, JojoDiff and xdelta 1.1 as well, every boundary BSP is applied by bsppatch.js, and DLDI drivers are checked against dlditool.
+- Patches are exchanged with open-vcdiff, NINJA 1.01, HDiffPatch, NSIS VPatch, JojoDiff and xdelta 1.1 as well, every boundary BSP is applied by bsppatch.js, igir applies every format it reads, and DLDI drivers are checked against dlditool.
 
 ### Fixes
 
+- A RUP change at offset 0 writes the offset in one byte, as NINJA 2.0 does. The zero-width offset written before made NINJA 2.0 on PHP 8 and igir fail on it.
 - A NINJA 1.01 text line holding only an offset is read as an empty record, as NINJA 1.01 writes it.
 
 ## 0.6.0
