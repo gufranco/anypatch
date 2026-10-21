@@ -8,6 +8,7 @@ from anypatch.formats.apswrite import differing_spans
 from anypatch.formats.ups import xor
 
 MAGIC = b"NINJA2"
+OFFSET_LEAST = 1
 HEADER = 0x800
 DESCRIPTION_AT = 0x800 - 1074
 DESCRIPTION_LENGTH = 1074
@@ -37,8 +38,8 @@ class Entry:
     records: tuple[tuple[int, bytes], ...]
 
 
-def _number(value: int) -> bytes:
-    raw = value.to_bytes((value.bit_length() + 7) // 8, "little")
+def _number(value: int, *, least: int = 0) -> bytes:
+    raw = value.to_bytes(max(least, (value.bit_length() + 7) // 8), "little")
     return bytes([len(raw)]) + raw
 
 
@@ -58,7 +59,7 @@ def _records(before: bytes, after: bytes) -> bytes:
     common = min(len(before), len(after))
     return b"".join(
         bytes([XOR_RECORD])
-        + _number(start)
+        + _number(start, least=OFFSET_LEAST)
         + _number(len(data))
         + xor(before[start : start + len(data)], data)
         for start, data in differing_spans(before[:common], after[:common])

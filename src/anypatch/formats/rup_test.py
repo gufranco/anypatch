@@ -23,6 +23,16 @@ GROW = opened(b"ABCD", b"AXCDEF", b"A\x01\x02\xba\xb9") + b"\x02\x01\x01\x01\x01
 
 
 class TestBuilding:
+    def test_a_change_at_offset_zero_writes_the_offset_in_one_byte_as_ninja_does(self):
+        # Arrange
+        before, after = b"ABCD", b"XBCD"
+
+        # Act
+        patch = rup.build(before, after)
+
+        # Assert
+        assert patch == header() + opened(before, after) + b"\x02\x01\x00\x01\x01\x19" + b"\x00"
+
     def test_a_worked_example_gives_the_exact_bytes(self):
         # Arrange
         before, after = b"ABCD", b"AXCDEF"
