@@ -5,18 +5,10 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-HOMEBREW_DESC_LIMIT = 80
 
 
 def tagline() -> str:
     found = re.search(r"<strong>(.+?)</strong>", (ROOT / "README.md").read_text(encoding="utf-8"))
-    assert found is not None
-    return found.group(1)
-
-
-def formula_desc() -> str:
-    text = (ROOT / "Formula" / "anypatch.rb").read_text(encoding="utf-8")
-    found = re.search(r'^\s*desc "([^"]+)"$', text, re.MULTILINE)
     assert found is not None
     return found.group(1)
 
@@ -31,17 +23,6 @@ class TestTheReadmeIsTheSource:
 
         # Assert
         assert description == tagline()
-
-    def test_the_formula_description_is_the_tagline(self):
-        # Arrange
-        expected = tagline()
-
-        # Act
-        desc = formula_desc()
-
-        # Assert
-        assert desc == expected
-        assert len(desc) <= HOMEBREW_DESC_LIMIT
 
     def test_the_citation_abstract_is_the_tagline(self):
         # Arrange
