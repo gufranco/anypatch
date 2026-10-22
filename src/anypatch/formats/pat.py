@@ -63,10 +63,10 @@ def apply(before: bytes, patch: bytes) -> bytes:
     out = bytearray(before)
     for offset, source, target in _records(patch):
         if offset >= len(out):
-            raise PatError(f"a record at {offset:#x} lies past the {len(out):,}-byte dump")
+            raise PatError(f"a record at {offset:#x} lies past the {len(out):,}-byte image")
         if out[offset] not in (source, target):
             raise PatError(
-                f"at {offset:#x} this dump holds {out[offset]:02X}, "
+                f"at {offset:#x} this image holds {out[offset]:02X}, "
                 f"which is neither {source:02X} nor {target:02X}"
             )
         out[offset] = target

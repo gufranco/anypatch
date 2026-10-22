@@ -179,4 +179,4 @@ def apply(before: bytes, patch: bytes) -> bytes:
         return before
     digest = hashlib.md5(before).digest()
     wanted = ", ".join(entry.source_md5.hex() for entry in entries)
-    raise RupError(f"made for MD5 {wanted}, but this dump is {digest.hex()}")
+    raise RupError(f"made for MD5 {wanted}, but this image is {digest.hex()}")

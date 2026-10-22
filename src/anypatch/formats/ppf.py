@@ -143,7 +143,7 @@ def _verified(out: bytearray, record: Record) -> None:
     if record.undo is None or held in (record.undo, record.data):
         return
     raise PpfError(
-        f"at 0x{record.offset:X} this dump holds {held.hex()}, which is neither the original "
+        f"at 0x{record.offset:X} this image holds {held.hex()}, which is neither the original "
         f"{record.undo.hex()} nor the patched {record.data.hex()}"
     )
 

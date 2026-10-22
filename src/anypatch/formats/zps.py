@@ -35,7 +35,7 @@ def check(before: bytes, header: bytes) -> None:
         raise ZpsError(f"a .HDR binding is {HEADER_SIZE} bytes, this one is {len(header)}")
     if len(before) < HEADER_SIZE or _pair(header) != _pair(before):
         have = _pair(before) if len(before) >= HEADER_SIZE else "no header"
-        raise ZpsError(f"bound to {_pair(header)}, but this dump is {have}")
+        raise ZpsError(f"bound to {_pair(header)}, but this image is {have}")
 
 
 def apply(before: bytes, payload: bytes, header: bytes | None) -> bytes:

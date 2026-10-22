@@ -83,7 +83,7 @@ class TestApplying:
         # Assert
         assert replayed == b"AXCDE"
 
-    def test_a_dump_that_already_carries_the_patch_comes_back_unchanged(self):
+    def test_a_image_that_already_carries_the_patch_comes_back_unchanged(self):
         # Arrange
         source = b"AXCDE"
 
@@ -103,7 +103,7 @@ class TestApplying:
 
         # Assert
         assert str(raised.value) == (
-            "at 0x1 this dump holds 51, which is neither the original 42 nor the patched 58"
+            "at 0x1 this image holds 51, which is neither the original 42 nor the patched 58"
         )
 
     def test_a_version_one_patch_overwrites_without_checks(self):
@@ -215,39 +215,39 @@ class TestTheSizeCeiling:
         assert "ceiling" in str(raised.value)
 
 
-class TestABlockCheckPastTheEndOfTheDump:
-    def test_only_the_bytes_the_dump_holds_are_compared(self):
+class TestABlockCheckPastTheEndOfTheImage:
+    def test_only_the_bytes_the_image_holds_are_compared(self):
         # Arrange
-        dump = SOURCE[: 0x9320 + 10]
+        image = SOURCE[: 0x9320 + 10]
         block = SOURCE[0x9320 : 0x9320 + 10] + bytes([0x5A]) * 1014
         patch = ppf3(struct.pack("<QB", 0, 1) + b"Q", block=block)
 
         # Act
-        result = ppf.apply(dump, patch)
+        result = ppf.apply(image, patch)
 
         # Assert
-        assert result == b"Q" + dump[1:]
+        assert result == b"Q" + image[1:]
 
-    def test_a_dump_shorter_than_the_block_offset_is_not_checked(self):
+    def test_a_image_shorter_than_the_block_offset_is_not_checked(self):
         # Arrange
-        dump = SOURCE[:16]
+        image = SOURCE[:16]
         patch = ppf3(struct.pack("<QB", 0, 1) + b"Q", block=bytes([0xEE]) * 1024)
 
         # Act
-        result = ppf.apply(dump, patch)
+        result = ppf.apply(image, patch)
 
         # Assert
-        assert result == b"Q" + dump[1:]
+        assert result == b"Q" + image[1:]
 
-    def test_the_bytes_the_dump_holds_must_still_match(self):
+    def test_the_bytes_the_image_holds_must_still_match(self):
         # Arrange
-        dump = SOURCE[: 0x9320 + 10]
+        image = SOURCE[: 0x9320 + 10]
         block = bytes(1024)
         patch = ppf3(struct.pack("<QB", 0, 1) + b"Q", block=block)
 
         # Act
         with pytest.raises(ppf.PpfError) as raised:
-            ppf.apply(dump, patch)
+            ppf.apply(image, patch)
 
         # Assert
         assert "the block check at 0x9320 does not match" in str(raised.value)
@@ -308,4 +308,4 @@ class TestReverting:
             ppf.revert(image, WORKED)
 
         # Assert
-        assert "at 0x1 this dump holds 5a" in str(raised.value)
+        assert "at 0x1 this image holds 5a" in str(raised.value)

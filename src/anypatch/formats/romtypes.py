@@ -109,7 +109,7 @@ def _nes(image: bytes) -> Normalized:
         return Normalized(image[COPIER_HEADER:], _prefixed(image[:COPIER_HEADER]))
     if image.startswith(b"UNIF"):
         return _unif(image)
-    raise RomTypeError("a NES patch needs an iNES, Famtasia or UNIF dump")
+    raise RomTypeError("a NES patch needs an iNES, Famtasia or UNIF image")
 
 
 def _banks(image: bytes) -> list[bytes]:
@@ -143,7 +143,7 @@ def _snes_order(image: bytes, ufo: bool) -> bytes:
         return _charted(image, chart) if chart else _halves(image)
     if _info(image, HIROM_INFO)[1]:
         return image
-    raise RomTypeError("this dump has no LoROM or HiROM header, so it is not a SNES ROM")
+    raise RomTypeError("this image has no LoROM or HiROM header, so it is not a SNES ROM")
 
 
 def _snes(image: bytes) -> Normalized:
@@ -169,7 +169,7 @@ def _n64(image: bytes) -> Normalized:
 def _gb(image: bytes) -> Normalized:
     data = image[COPIER_HEADER:] if len(image) % GB_BANK else image
     if data[GB_LOGO_AT : GB_LOGO_AT + len(GB_LOGO)] != GB_LOGO:
-        raise RomTypeError("this dump has no Nintendo logo at 0x104, so it is not a Game Boy ROM")
+        raise RomTypeError("this image has no Nintendo logo at 0x104, so it is not a Game Boy ROM")
     return Normalized(data, _unchanged)
 
 
@@ -188,7 +188,7 @@ def _sega(sega_at: int) -> Callable[[bytes], Normalized]:
             body = image[COPIER_HEADER:]
             blocks = (body[at : at + SMD_BLOCK] for at in range(0, len(body), SMD_BLOCK))
             return Normalized(b"".join(_smd_block(one) for one in blocks), _unchanged)
-        raise RomTypeError("this dump is neither a plain image with SEGA nor an SMD dump")
+        raise RomTypeError("this image is neither a plain image with SEGA nor an SMD image")
 
     return read
 

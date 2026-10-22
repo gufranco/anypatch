@@ -27,7 +27,7 @@ class TestTheReferencePairs:
         # Assert
         assert recorded == wanted
 
-    def test_every_source_starts_like_an_n64_dump(self):
+    def test_every_source_starts_like_an_n64_image(self):
         # Arrange
         sources = [case.source for case in vectors.cases()]
 

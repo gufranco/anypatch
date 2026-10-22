@@ -91,7 +91,7 @@ def apply(before: bytes, patch: bytes) -> bytes:
         return before
     if len(before) != source_size:
         raise ApsGbaError(
-            f"made for a {source_size:,}-byte dump, but this one is {len(before):,} bytes"
+            f"made for a {source_size:,}-byte image, but this one is {len(before):,} bytes"
         )
     size = max([target_size, *(one.offset + BLOCK for one in records)])
     imagesize.check(size, source=len(before))

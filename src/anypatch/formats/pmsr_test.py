@@ -144,7 +144,7 @@ class TestApplying:
         # Assert
         assert replayed == base + b"\x00\x00xy"
 
-    def test_a_dump_that_already_carries_the_patch_comes_back_unchanged(self):
+    def test_a_image_that_already_carries_the_patch_comes_back_unchanged(self):
         # Arrange
         carried = b"rod!".rjust(0x24, b"\x00") + b"star".rjust(0x1000 - 0x24 + 4, b"\x00")
 
@@ -154,7 +154,7 @@ class TestApplying:
         # Assert
         assert replayed == carried
 
-    def test_another_dump_is_refused_naming_paper_mario(self):
+    def test_another_image_is_refused_naming_paper_mario(self):
         # Arrange
         source = bytes(64)
 
@@ -165,7 +165,7 @@ class TestApplying:
         # Assert
         assert str(raised.value) == (
             "made for Paper Mario USA 1.0, 41,943,040 bytes with CRC32 A7F5CD7E; "
-            f"this dump is 64 bytes with CRC32 {zlib.crc32(source):08X}"
+            f"this image is 64 bytes with CRC32 {zlib.crc32(source):08X}"
         )
 
 

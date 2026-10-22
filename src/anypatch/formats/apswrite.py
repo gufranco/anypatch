@@ -174,7 +174,7 @@ def check(before: bytes, patch: bytes) -> None:
         )
     if len(before) < HEADER_MINIMUM or _binding(before) != _bound(patch):
         have = _described(_binding(before)) if len(before) >= HEADER_MINIMUM else "no header"
-        raise ApsError(f"bound to {_described(_bound(patch))}, but this dump is {have}")
+        raise ApsError(f"bound to {_described(_bound(patch))}, but this image is {have}")
 
 
 def _record(patch: bytes, at: int, size: int) -> tuple[int, bytes, int]:
@@ -197,7 +197,7 @@ def _record(patch: bytes, at: int, size: int) -> tuple[int, bytes, int]:
 
 def byteswapped(data: bytes) -> bytes:
     if len(data) % 2:
-        raise ApsError(f"a byte-swapped patch needs an even-sized dump, not {len(data):,} bytes")
+        raise ApsError(f"a byte-swapped patch needs an even-sized image, not {len(data):,} bytes")
     out = bytearray(len(data))
     out[0::2] = data[1::2]
     out[1::2] = data[0::2]

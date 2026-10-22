@@ -201,7 +201,7 @@ class TestReading:
 
 class TestApplying:
     @pytest.mark.parametrize("kind", [Format.APS, Format.ZPS])
-    def test_a_bound_patch_on_another_dump_names_the_patch(self, kind, tmp_path):
+    def test_a_bound_patch_on_another_image_names_the_patch(self, kind, tmp_path):
         # Arrange
         before = image()
         path = tmp_path / f"fix.{kind.value}"
@@ -227,7 +227,7 @@ class TestApplying:
         # Assert
         assert str(raised.value) == "fix.ips: the patch ends inside the record at byte 5"
 
-    def test_an_xdelta_on_the_wrong_dump_names_the_patch(self, tmp_path):
+    def test_an_xdelta_on_the_wrong_image_names_the_patch(self, tmp_path):
         # Arrange
         before = image()
         path = tmp_path / "fix.xdelta"

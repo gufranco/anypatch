@@ -83,10 +83,10 @@ def build(before: bytes, after: bytes) -> bytes:
     return MAGIC + BINARY + bytes([0]) + _digests(before) + records + bytes([len(END)]) + END
 
 
-def _sample(dump: bytes) -> bytes:
-    if len(dump) <= LARGE:
-        return dump
-    return dump[:SAMPLE_HEAD] + dump[-SAMPLE_TAIL:] + str(len(dump)).encode("ascii")
+def _sample(image: bytes) -> bytes:
+    if len(image) <= LARGE:
+        return image
+    return image[:SAMPLE_HEAD] + image[-SAMPLE_TAIL:] + str(len(image)).encode("ascii")
 
 
 def _inflated(body: bytes) -> bytes:
@@ -163,14 +163,14 @@ def _text(body: bytes) -> tuple[Checks, list[tuple[int, bytes]]]:
     return checks, [_record(line) for line in meaningful[1:]]
 
 
-def _view(system: str, dump: bytes) -> bytes:
+def _view(system: str, image: bytes) -> bytes:
     kind = SYSTEMS.get(system)
-    if kind is None or len(dump) > LARGE:
-        return dump
+    if kind is None or len(image) > LARGE:
+        return image
     try:
-        return romtypes.normalized(kind, dump).data
+        return romtypes.normalized(kind, image).data
     except romtypes.RomTypeError:
-        return dump
+        return image
 
 
 def _matches(checks: Checks, data: bytes) -> str:
@@ -181,19 +181,19 @@ def _matches(checks: Checks, data: bytes) -> str:
         ("SHA-1", checks.sha1, hashlib.sha1(sample).hexdigest()),
     )
     wrong = [
-        f"{name} {want}, this dump {have}"
+        f"{name} {want}, this image {have}"
         for name, want, have in found
         if want not in (UNKNOWN, have)
     ]
     return "; ".join(wrong)
 
 
-def _source(checks: Checks, dump: bytes) -> bytes:
-    candidates = [_view(checks.system, dump), dump]
+def _source(checks: Checks, image: bytes) -> bytes:
+    candidates = [_view(checks.system, image), image]
     for data in candidates:
         if not _matches(checks, data):
             return data
-    raise Rup1Error(f"made for another dump: {_matches(checks, candidates[-1])}")
+    raise Rup1Error(f"made for another image: {_matches(checks, candidates[-1])}")
 
 
 def apply(before: bytes, patch: bytes) -> bytes:

@@ -308,11 +308,11 @@ class TestRefusals:
     )
     def test_a_damaged_or_mismatched_patch_is_refused(self, source, patch, message):
         # Arrange
-        dump = source
+        image = source
 
         # Act
         with pytest.raises(hdiff.HdiffError) as raised:
-            hdiff.apply(dump, patch)
+            hdiff.apply(image, patch)
 
         # Assert
         assert message in str(raised.value)

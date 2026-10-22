@@ -252,7 +252,7 @@ def _segment(indicator: int, reader: _Reader, source: bytes, out: bytes) -> byte
     if not indicator & (VCD_SOURCE | VCD_TARGET):
         return b""
     length, position = reader.varint(), reader.varint()
-    pool, name = (source, "this dump") if indicator & VCD_SOURCE else (out, "the output so far")
+    pool, name = (source, "this image") if indicator & VCD_SOURCE else (out, "the output so far")
     if position + length > len(pool):
         raise VcdiffError(f"a window reads {length} bytes at {position:#x}, past the end of {name}")
     return pool[position : position + length]
@@ -363,7 +363,7 @@ def _decode(reader: _Reader, source: bytes, *, nested: bool, until: int | None) 
             and zlib.adler32(target, ADLER_SEEDS[version]) != window.checksum
         ):
             raise VcdiffError(
-                f"the window at output {len(out):#x} does not match: wrong source dump"
+                f"the window at output {len(out):#x} does not match: wrong source image"
             )
         out.extend(target)
     return bytes(out)

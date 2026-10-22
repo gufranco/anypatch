@@ -3,7 +3,7 @@ from anypatch.formats import rup_vectors_test_support as vectors
 
 
 class TestAPatchNinjaWrote:
-    def test_the_typed_nes_patch_applies_to_the_ines_dump_and_keeps_its_header(self):
+    def test_the_typed_nes_patch_applies_to_the_ines_image_and_keeps_its_header(self):
         # Arrange
         source = vectors.INES_HEADER + vectors.source()
 

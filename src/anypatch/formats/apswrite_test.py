@@ -24,7 +24,7 @@ def changed(image: bytes, at: int, word: int) -> bytes:
     return bytes(out)
 
 
-class TestTheHeaderThatBindsAPatchToItsDump:
+class TestTheHeaderThatBindsAPatchToItsImage:
     def test_the_magic_and_type_identify_it_as_an_n64_patch(self):
         # Arrange
         before = rom()
@@ -36,7 +36,7 @@ class TestTheHeaderThatBindsAPatchToItsDump:
         assert patch[: len(apswrite.MAGIC)] == apswrite.MAGIC
         assert patch[len(apswrite.MAGIC)] == apswrite.TYPE_N64
 
-    def test_the_checksum_pair_is_copied_from_the_dump_being_patched(self):
+    def test_the_checksum_pair_is_copied_from_the_image_being_patched(self):
         # Arrange
         before = rom()
 
@@ -47,7 +47,7 @@ class TestTheHeaderThatBindsAPatchToItsDump:
         carried = struct.unpack_from(">II", patch, apswrite.CRC_OFFSET)
         assert carried == (0xCA12B547, 0x71FA4EE4)
 
-    def test_the_cart_code_and_country_are_copied_from_the_dump(self):
+    def test_the_cart_code_and_country_are_copied_from_the_image(self):
         # Arrange
         before = rom(cart=b"ZS", country=ord("J"))
 
@@ -58,7 +58,7 @@ class TestTheHeaderThatBindsAPatchToItsDump:
         assert patch[apswrite.CART_OFFSET : apswrite.CART_OFFSET + 2] == b"ZS"
         assert patch[apswrite.COUNTRY_OFFSET] == ord("J")
 
-    def test_the_declared_size_is_the_length_of_the_dump(self):
+    def test_the_declared_size_is_the_length_of_the_image(self):
         # Arrange
         before = rom(size=0x200)
 
@@ -325,7 +325,7 @@ class TestSizeChanges:
 
 
 class TestWhatApplyRefuses:
-    def test_a_patch_bound_to_another_dump_names_both(self):
+    def test_a_patch_bound_to_another_image_names_both(self):
         # Arrange
         before = rom()
         patch = apswrite.build(before, changed(before, 0x80, 1))
@@ -338,10 +338,10 @@ class TestWhatApplyRefuses:
         # Assert
         assert (
             str(raised.value)
-            == "bound to NSE CA12B547 71FA4EE4, but this dump is NSE 12345678 71FA4EE4"
+            == "bound to NSE CA12B547 71FA4EE4, but this image is NSE 12345678 71FA4EE4"
         )
 
-    def test_a_dump_too_short_for_a_header_is_refused(self):
+    def test_a_image_too_short_for_a_header_is_refused(self):
         # Arrange
         before = rom()
         patch = apswrite.build(before, before)
@@ -351,7 +351,7 @@ class TestWhatApplyRefuses:
             apswrite.apply(bytes(8), patch)
 
         # Assert
-        assert "this dump is no header" in str(raised.value)
+        assert "this image is no header" in str(raised.value)
 
     @pytest.mark.parametrize(
         ("at", "value", "message"),
@@ -421,7 +421,7 @@ class TestByteSwappedPatches:
         # Assert
         assert swapped == b"\x37\x80\x40\x12"
 
-    def test_records_for_the_v64_image_apply_to_the_native_dump(self):
+    def test_records_for_the_v64_image_apply_to_the_native_image(self):
         # Arrange
         before = rom(0x200)
         after = changed(changed(before, 0x80, 0x11223344), 0x101, 0x55667788)
@@ -444,9 +444,9 @@ class TestByteSwappedPatches:
             apswrite.apply(other, patch)
 
         # Assert
-        assert "but this dump is NSE 12345678 71FA4EE4" in str(raised.value)
+        assert "but this image is NSE 12345678 71FA4EE4" in str(raised.value)
 
-    def test_an_odd_sized_dump_cannot_be_byte_swapped(self):
+    def test_an_odd_sized_image_cannot_be_byte_swapped(self):
         # Arrange
         data = b"\x80\x37\x12"
 
@@ -455,4 +455,4 @@ class TestByteSwappedPatches:
             apswrite.byteswapped(data)
 
         # Assert
-        assert str(raised.value) == "a byte-swapped patch needs an even-sized dump, not 3 bytes"
+        assert str(raised.value) == "a byte-swapped patch needs an even-sized image, not 3 bytes"

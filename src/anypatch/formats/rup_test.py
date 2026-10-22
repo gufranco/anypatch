@@ -79,7 +79,7 @@ class TestApplying:
         # Assert
         assert replayed == b"AXCDEF"
 
-    def test_a_dump_that_already_carries_the_patch_comes_back_unchanged(self):
+    def test_a_image_that_already_carries_the_patch_comes_back_unchanged(self):
         # Arrange
         patch = header() + GROW + b"\x00"
 
@@ -89,7 +89,7 @@ class TestApplying:
         # Assert
         assert replayed == b"AXCDEF"
 
-    def test_the_file_entry_matching_the_dump_is_the_one_applied(self):
+    def test_the_file_entry_matching_the_image_is_the_one_applied(self):
         # Arrange
         other = opened(b"WXYZ", b"WXYQ") + b"\x02\x01\x03\x01\x01\x0b"
         patch = header() + other + GROW + b"\x00"
@@ -100,7 +100,7 @@ class TestApplying:
         # Assert
         assert replayed == b"AXCDEF"
 
-    def test_another_dump_is_refused_naming_every_expected_md5(self):
+    def test_another_image_is_refused_naming_every_expected_md5(self):
         # Arrange
         patch = header() + GROW + b"\x00"
 
@@ -110,7 +110,7 @@ class TestApplying:
 
         # Assert
         assert str(raised.value) == (
-            f"made for MD5 {md5(b'ABCD').hex()}, but this dump is {md5(b'ZZZZ').hex()}"
+            f"made for MD5 {md5(b'ABCD').hex()}, but this image is {md5(b'ZZZZ').hex()}"
         )
 
     def test_a_result_with_the_wrong_md5_is_refused(self):
@@ -178,7 +178,7 @@ INES = b"NES\x1a" + bytes(range(12))
 
 
 class TestRomTypes:
-    def test_a_nes_patch_applies_to_an_ines_dump_and_keeps_its_header(self):
+    def test_a_nes_patch_applies_to_an_ines_image_and_keeps_its_header(self):
         # Arrange
         patch = typed(b"original game", b"patched game!", romtypes.NES)
 
@@ -188,7 +188,7 @@ class TestRomTypes:
         # Assert
         assert result == INES + b"patched game!"
 
-    def test_a_dump_that_already_carries_a_typed_patch_comes_back_unchanged(self):
+    def test_a_image_that_already_carries_a_typed_patch_comes_back_unchanged(self):
         # Arrange
         patch = typed(b"original game", b"patched game!", romtypes.NES)
 
@@ -198,7 +198,7 @@ class TestRomTypes:
         # Assert
         assert result == INES + b"patched game!"
 
-    def test_a_dump_the_type_cannot_read_is_compared_as_it_is(self):
+    def test_a_image_the_type_cannot_read_is_compared_as_it_is(self):
         # Arrange
         patch = typed(b"no header here", b"no header HERE", romtypes.NES)
 
@@ -208,7 +208,7 @@ class TestRomTypes:
         # Assert
         assert result == b"no header HERE"
 
-    def test_a_typed_patch_on_another_dump_names_the_raw_md5(self):
+    def test_a_typed_patch_on_another_image_names_the_raw_md5(self):
         # Arrange
         patch = typed(b"original game", b"patched game!", romtypes.NES)
 
@@ -217,4 +217,4 @@ class TestRomTypes:
             rup.apply(INES + b"another game!", patch)
 
         # Assert
-        assert f"this dump is {md5(INES + b'another game!').hex()}" in str(raised.value)
+        assert f"this image is {md5(INES + b'another game!').hex()}" in str(raised.value)

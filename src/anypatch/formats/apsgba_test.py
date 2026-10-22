@@ -92,7 +92,7 @@ class TestApplying:
         # Assert
         assert replayed == AFTER
 
-    def test_a_dump_that_already_carries_the_patch_comes_back_unchanged(self):
+    def test_a_image_that_already_carries_the_patch_comes_back_unchanged(self):
         # Arrange
         source = AFTER
 
@@ -114,7 +114,7 @@ class TestApplying:
         # Assert
         assert replayed == after
 
-    def test_a_dump_of_another_size_is_refused(self):
+    def test_a_image_of_another_size_is_refused(self):
         # Arrange
         source = SOURCE[:-1]
 
@@ -123,7 +123,7 @@ class TestApplying:
             apsgba.apply(source, PATCH)
 
         # Assert
-        assert str(raised.value) == "made for a 65,792-byte dump, but this one is 65,791 bytes"
+        assert str(raised.value) == "made for a 65,792-byte image, but this one is 65,791 bytes"
 
     def test_a_block_that_differs_from_the_source_is_refused(self):
         # Arrange
@@ -253,7 +253,7 @@ class TestAPartialLastBlock:
         # Assert
         assert result == after
 
-    def test_a_dump_already_carrying_an_unpadded_patch_comes_back_unchanged(self):
+    def test_a_image_already_carrying_an_unpadded_patch_comes_back_unchanged(self):
         # Arrange
         after = edited(SOURCE, len(SOURCE) - 1, b"\x01")
         patch = unpadded_patch(SOURCE, after, BLOCK)

@@ -20,7 +20,7 @@ def changed(before: bytes, at: int, data: bytes) -> bytes:
 
 
 class TestBuilding:
-    def test_the_payload_is_ips_and_the_header_is_the_dumps_first_64_bytes(self):
+    def test_the_payload_is_ips_and_the_header_is_the_images_first_64_bytes(self):
         # Arrange
         before = image()
         after = changed(before, 0x100, b"\xde\xad")
@@ -34,7 +34,7 @@ class TestBuilding:
 
 
 class TestApplying:
-    def test_a_bound_patch_replays_on_its_own_dump(self):
+    def test_a_bound_patch_replays_on_its_own_image(self):
         # Arrange
         before = image()
         after = changed(before, 0x100, b"\xde\xad")
@@ -58,7 +58,7 @@ class TestApplying:
         # Assert
         assert replayed == after
 
-    def test_a_patch_bound_to_another_dump_names_both_crc_pairs(self):
+    def test_a_patch_bound_to_another_image_names_both_crc_pairs(self):
         # Arrange
         before = image()
         payload, header = zps.build(before, changed(before, 0x100, b"\x01"))
@@ -69,7 +69,9 @@ class TestApplying:
             zps.apply(other, payload, header)
 
         # Assert
-        assert str(raised.value) == "bound to 2337D8E8 6B8E7CEC, but this dump is 11111111 22222222"
+        assert (
+            str(raised.value) == "bound to 2337D8E8 6B8E7CEC, but this image is 11111111 22222222"
+        )
 
     def test_a_header_of_the_wrong_size_is_refused(self):
         # Arrange

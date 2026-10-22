@@ -122,7 +122,7 @@ class TestSystems:
         # Assert
         assert result == b"Z" + plain[1:]
 
-    def test_a_dump_the_system_cannot_read_is_compared_as_it_is(self):
+    def test_a_image_the_system_cannot_read_is_compared_as_it_is(self):
         # Arrange
         patch = b"NINJA1B " + bytes([2]) + digests(SOURCE) + WORKED_RECORDS + b"\x03EOF"
 
@@ -134,15 +134,15 @@ class TestSystems:
 
 
 class TestLargeFiles:
-    def test_a_dump_past_30_mib_is_checked_by_its_sample(self):
+    def test_a_image_past_30_mib_is_checked_by_its_sample(self):
         # Arrange
         size = 0x1E00000 + 16
-        dump = bytes(size)
-        sample = dump[:0x1400000] + dump[-0xA00000:] + str(size).encode("ascii")
+        image = bytes(size)
+        sample = image[:0x1400000] + image[-0xA00000:] + str(size).encode("ascii")
         patch = b"NINJA1B " + bytes([0]) + digests(sample) + b"\x01\x00\x01\x01Z" + b"\x03EOF"
 
         # Act
-        result = rup1.apply(dump, patch)
+        result = rup1.apply(image, patch)
 
         # Assert
         assert result[:2] == b"Z\x00"

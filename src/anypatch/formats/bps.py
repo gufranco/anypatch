@@ -206,6 +206,6 @@ def apply(before: bytes, patch: bytes) -> bytes:
     if (len(before), crc) == (header.target_size, header.target_crc):
         return before
     raise BpsError(
-        f"made for a {header.source_size:,}-byte dump with CRC32 {header.source_crc:08X}, "
+        f"made for a {header.source_size:,}-byte image with CRC32 {header.source_crc:08X}, "
         f"but this one is {len(before):,} bytes with CRC32 {crc:08X}"
     )

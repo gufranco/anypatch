@@ -100,7 +100,7 @@ class TestNes:
         assert found.data == b"P" * 16 + b"C" * 8
         assert found.restore(b"p" * 16 + b"c" * 8) == unif(b"p" * 16, b"c" * 8)
 
-    def test_a_dump_with_no_header_cannot_be_normalized(self):
+    def test_a_image_with_no_header_cannot_be_normalized(self):
         # Arrange
         image = body(64)
 
@@ -109,7 +109,7 @@ class TestNes:
             romtypes.normalized(romtypes.NES, image)
 
         # Assert
-        assert "an iNES, Famtasia or UNIF dump" in str(raised.value)
+        assert "an iNES, Famtasia or UNIF image" in str(raised.value)
 
     def test_a_unif_chunk_that_runs_past_the_end_is_refused(self):
         # Arrange
@@ -175,7 +175,7 @@ class TestSnes:
             range(1, 0x50)
         )
 
-    def test_a_super_ufo_dump_of_20_mbit_uses_the_halves_order(self):
+    def test_a_super_ufo_image_of_20_mbit_uses_the_halves_order(self):
         # Arrange
         image = bytearray(hirom(0x50 * BANK))
         image[8:16] = b"SUPERUFO"
@@ -241,7 +241,7 @@ def interleaved_halves_inverse(image: bytes) -> bytes:
 
 
 class TestN64:
-    def test_a_v64_dump_is_byte_swapped_and_kept_that_way(self):
+    def test_a_v64_image_is_byte_swapped_and_kept_that_way(self):
         # Arrange
         image = b"\x37\x80\x40\x12" + b"abcd"
 
@@ -251,7 +251,7 @@ class TestN64:
         # Assert
         assert (found.data, found.restore(b"r")) == (b"\x80\x37\x12\x40badc", b"r")
 
-    def test_a_z64_dump_is_used_as_it_is(self):
+    def test_a_z64_image_is_used_as_it_is(self):
         # Arrange
         image = b"\x80\x37\x12\x40abcd"
 
@@ -329,7 +329,7 @@ class TestHeaderedBySize:
 
 class TestSega:
     @pytest.mark.parametrize(("kind", "sega_at"), [(romtypes.SMS, 0x7FF4), (romtypes.MD, 0x100)])
-    def test_an_smd_dump_is_deinterleaved_into_a_plain_image(self, kind, sega_at):
+    def test_an_smd_image_is_deinterleaved_into_a_plain_image(self, kind, sega_at):
         # Arrange
         image = bytearray(body(2 * 16 * KIB))
         image[sega_at : sega_at + 4] = b"SEGA"
@@ -362,4 +362,4 @@ class TestSega:
             romtypes.normalized(kind, image)
 
         # Assert
-        assert "neither a plain image with SEGA nor an SMD dump" in str(raised.value)
+        assert "neither a plain image with SEGA nor an SMD image" in str(raised.value)

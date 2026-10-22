@@ -60,7 +60,7 @@ class TestTheReferenceVectors:
             vcdiff.apply(case.source[:100], vectors.PATCHES["plain"])
 
         # Assert
-        assert "past the end of this dump" in str(raised.value)
+        assert "past the end of this image" in str(raised.value)
 
 
 class TestBuilding:

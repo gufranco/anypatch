@@ -129,7 +129,7 @@ class TestApplying:
             api.apply(other, [checked])
 
         # Assert
-        assert str(raised.value).startswith("c.ups: made for a 1,024-byte dump with CRC32")
+        assert str(raised.value).startswith("c.ups: made for a 1,024-byte image with CRC32")
         assert str(raised.value).endswith(api.CLEAN_HINT)
 
     def test_with_the_clean_source_the_input_joins_the_check(self):

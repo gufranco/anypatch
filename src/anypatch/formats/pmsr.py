@@ -93,7 +93,7 @@ def _bound(before: bytes) -> None:
     if (len(before), crc) != (BASE_SIZE, BASE_CRC):
         raise PmsrError(
             f"made for {BASE_NAME}, {BASE_SIZE:,} bytes with CRC32 {BASE_CRC:08X}; "
-            f"this dump is {len(before):,} bytes with CRC32 {crc:08X}"
+            f"this image is {len(before):,} bytes with CRC32 {crc:08X}"
         )
 
 

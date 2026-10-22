@@ -52,8 +52,8 @@ class TestRefusals:
     @pytest.mark.parametrize(
         ("patch", "message"),
         [
-            (b"00000001: 58 59\r\n", "at 0x1 this dump holds 42, which is neither 58 nor 59"),
-            (b"00000100: 41 42\r\n", "a record at 0x100 lies past the 12-byte dump"),
+            (b"00000001: 58 59\r\n", "at 0x1 this image holds 42, which is neither 58 nor 59"),
+            (b"00000100: 41 42\r\n", "a record at 0x100 lies past the 12-byte image"),
             (b"no records at all\r\n", "not a PAT patch: no line reads OOOOOOOO: SS MM"),
             (b"\xff\xfe binary\r\n00000000: 41 61\r\n", "not a PAT patch: it is not text"),
         ],

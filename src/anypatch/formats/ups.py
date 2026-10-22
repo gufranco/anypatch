@@ -111,7 +111,7 @@ def apply(before: bytes, patch: bytes) -> bytes:
     if (len(before), crc) == (found.output_size, found.output_crc):
         return before
     raise UpsError(
-        f"made for a {found.input_size:,}-byte dump with CRC32 {found.input_crc:08X}, "
+        f"made for a {found.input_size:,}-byte image with CRC32 {found.input_crc:08X}, "
         f"but this one is {len(before):,} bytes with CRC32 {crc:08X}"
     )
 
