@@ -110,12 +110,11 @@ anypatch 為保存與互通而存在。它不附帶任何 ROM 和修補檔，亦
 ### Homebrew
 
 ```bash
-brew tap gufranco/anypatch https://github.com/gufranco/anypatch
-brew install gufranco/anypatch/anypatch
+brew install gufranco/tap/anypatch
 anypatch doctor
 ```
 
-儲存庫名稱不是 `homebrew-anypatch`，所以 tap 需要提供 URL。`brew install --HEAD gufranco/anypatch/anypatch` 會建置 `main` 的最新提交，而不是最新發佈版本。
+formula 位於共享的僅含 formula 的 tap [gufranco/homebrew-tap](https://github.com/gufranco/homebrew-tap)，因此複製很快。`brew install --HEAD gufranco/tap/anypatch` 會建置 `main` 的最新提交，而不是最新發佈版本。
 
 ### 作為另一個專案的依賴
 

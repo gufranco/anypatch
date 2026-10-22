@@ -162,4 +162,5 @@ jobs:
     with:
       tag: ${{ needs.release.outputs.tag }}
     permissions:
-      contents: write
+      contents: read
+    secrets: inherit

@@ -110,12 +110,11 @@ The optional interop cross-checks use reference tools this project neither ships
 ### Homebrew
 
 ```bash
-brew tap gufranco/anypatch https://github.com/gufranco/anypatch
-brew install gufranco/anypatch/anypatch
+brew install gufranco/tap/anypatch
 anypatch doctor
 ```
 
-The tap needs the URL because the repository is not named `homebrew-anypatch`. `brew install --HEAD gufranco/anypatch/anypatch` builds the tip of `main` instead of the latest release.
+The formula lives in [gufranco/homebrew-tap](https://github.com/gufranco/homebrew-tap), a shared formula-only tap, so tapping it is a fast clone. `brew install --HEAD gufranco/tap/anypatch` builds the tip of `main` instead of the latest release.
 
 ### As a dependency of another project
 

@@ -14,6 +14,7 @@ from anypatch.patchio import Format, Patch, PatchError
 
 HEADER_SUFFIX = patchio.HEADER_SUFFIX
 LABEL_WIDTH = 15
+PART_SUFFIX = ".part"
 
 Output = Annotated[Path, typer.Option("-o", "--output", help="where the result goes")]
 FormatOption = Annotated[
@@ -50,8 +51,6 @@ def _read(path: Path) -> bytes:
 
 
 def _patches(paths: list[Path], choices: list[int] | None = None) -> list[Patch]:
-    for path in paths:
-        _read(path)
     taken = tuple(choices or ())
     return [dataclasses.replace(patchio.read(path), choices=taken) for path in paths]
 
@@ -69,7 +68,9 @@ def _planned(target: Path, encoded: dict[str, bytes]) -> dict[Path, bytes]:
 
 def _write(planned: dict[Path, bytes]) -> None:
     for path, data in planned.items():
-        path.write_bytes(data)
+        staged = path.with_name(path.name + PART_SUFFIX)
+        staged.write_bytes(data)
+        staged.replace(path)
         typer.echo(_label("wrote", f"{path}, {len(data):,} bytes"))
 
 

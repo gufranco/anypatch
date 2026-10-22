@@ -46,5 +46,4 @@ Coverage is 100% of statements and branches. Tests carry only the `# Arrange`, `
 | `src/anypatch/cli/` | The Typer command line |
 | `src/anypatch/entry.py` | The console script, which says how to get the `cli` extra when Typer is absent |
 | `tests/` | Tests of the repository itself and of `python -m anypatch` |
-| `Formula/anypatch.rb` | The Homebrew formula, rewritten by the release workflow |
-| `scripts/` | Release, formula and commit-message scripts |
+| `scripts/` | Release and commit-message scripts |

@@ -110,12 +110,11 @@ anypatch は保存と相互運用のために存在します。ROM もパッチ�
 ### Homebrew
 
 ```bash
-brew tap gufranco/anypatch https://github.com/gufranco/anypatch
-brew install gufranco/anypatch/anypatch
+brew install gufranco/tap/anypatch
 anypatch doctor
 ```
 
-リポジトリ名が `homebrew-anypatch` ではないため、tap には URL が必要です。`brew install --HEAD gufranco/anypatch/anypatch` は最新リリースの代わりに `main` の先端をビルドします。
+formula は共有の formula 専用タップ [gufranco/homebrew-tap](https://github.com/gufranco/homebrew-tap) にあり、クローンが軽くなります。`brew install --HEAD gufranco/tap/anypatch` は最新リリースの代わりに `main` の先端をビルドします。
 
 ### 別のプロジェクトの依存として
 
