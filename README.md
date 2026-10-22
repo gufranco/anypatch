@@ -25,7 +25,7 @@ anypatch is one library and one command line over the same code. Every capabilit
 ## Usage
 
 ```console
-$ anypatch make clean.bin hacked.bin -o title.bps
+$ anypatch make clean.bin modified.bin -o title.bps
 wrote          title.bps, 38 bytes
 $ anypatch apply clean.bin title.bps fix.ips -o out.bin
 applied        title.bps, fix.ips
@@ -98,6 +98,12 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | xdelta, VCDIFF | yes | yes | `.xdelta`, `.vcdiff`, `.xd3`, `.delta` | An Adler-32 checksum of every window, when present. Reads xdelta3 output with no secondary compression, LZMA, DJW or FGK, open-vcdiff's interleaved and checksummed S version, and application code tables in the RFC 3284 and open-vcdiff layouts |
 
 The contents decide the format; only an IPS body named `.zps` or `.ip1` is read as ZPS. Every patch is applied to the clean source on its own, and the bytes each one changes are compared. Two patches that write different values to one byte are refused, with every range and both values listed; identical writes merge. A patch whose format carries a source checksum is refused on any other file, naming both values, and when the source already holds the result it is reported as already applied. A patch that claims a result larger than both 1 GiB and its source is refused before anything is allocated.
+
+## Preservation and legal use
+
+anypatch exists for preservation and interoperability. It ships no ROMs and no patches, and it carries no links to where to obtain them. You supply the files you work on, and you are responsible for holding them legally: an image you created from your own cartridge, a patch you are licensed to use. Every format was learned clean-room from a public specification or an open implementation, each listed in [NOTICE.md](NOTICE.md); no third-party code was copied. The suite that gates every change, `uv run pytest`, runs entirely on synthetic data and contacts no external site.
+
+The optional interop cross-checks use reference tools this project neither ships nor downloads. Supply each one yourself, legally obtained, in a local `external/` folder that is gitignored. [artifacts.manifest.json](artifacts.manifest.json) lists every expected file by name and SHA-256 so you can confirm what you place there; no download location is recorded, by design.
 
 ## Install
 

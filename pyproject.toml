@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE", "NOTICE.md"]
 authors = [{ name = "Gustavo Franco" }]
-keywords = ["patch", "delta", "ips", "bps", "ups", "xdelta", "vcdiff", "ppf", "bsdiff", "romhacking"]
+keywords = ["patch", "delta", "ips", "bps", "ups", "xdelta", "vcdiff", "ppf", "bsdiff", "preservation"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",

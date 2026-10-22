@@ -6,3 +6,10 @@ uv run ruff format --check .
 uv run ruff check .
 uv run mypy
 pnpm run format:check
+
+staged="$(git diff --cached --name-only --diff-filter=AM)"
+pattern='\.(rom|nes|sfc|smc|gba|n64|z64|v64|gb|gbc|ips|bps|ups|ppf|aps|rup|xdelta|vcdiff|bsdiff|bsp|pat|dps|hdiff|jdf|gdiff|dldi|ebp|zps|pmsr|eep|sra|fla|mpk)$'
+if printf '%s\n' "$staged" | grep -qiE "$pattern"; then
+  echo "refusing to commit a ROM, BIOS, or patch file; supply it in external/ and see artifacts.manifest.json" >&2
+  exit 1
+fi

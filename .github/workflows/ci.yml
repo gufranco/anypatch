@@ -379,56 +379,6 @@ jobs:
           PYTHONPATH: src
         run: python scripts/interop.py --tool bsdiff4 --work "$RUNNER_TEMP/interop"
 
-  ninja:
-    name: NINJA 2.0 and anypatch exchange every boundary patch
-    runs-on: ubuntu-26.04
-    env:
-      NINJA_SHA256: 4ae3e01ec8db638a7f4106763ecb8b921c0411e8009aa1ebfade1a34fb93c91a
-      NINJA_ARCHIVE: https://web.archive.org/web/20070102142905id_
-      NINJA_FILE: http://ninja.cinnamonpirate.com:80/files/ninja-2.0-src-beta20060726.zip
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.14"
-
-      - name: Install the reference tool
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq php-cli php-gmp
-          curl -sfL -o "$RUNNER_TEMP/ninja.zip" "$NINJA_ARCHIVE/$NINJA_FILE"
-          echo "${NINJA_SHA256}  $RUNNER_TEMP/ninja.zip" | sha256sum -c -
-          unzip -q "$RUNNER_TEMP/ninja.zip" ninja2.php -d "$RUNNER_TEMP/ninja"
-
-      - name: Make the 2006 script run on PHP 8
-        run: |
-          python - "$RUNNER_TEMP/ninja" <<'FIX'
-          import sys
-          from pathlib import Path
-
-          folder = Path(sys.argv[1])
-          script = (folder / "ninja2.php").read_text(encoding="latin-1")
-          for library in ("GMP", "mbstring"):
-              message = f"Fatal Error: {library} library was not found"
-              inverted = "else\n  die(\"" + message + "\\r\\n\\r\\n\");"
-              if script.count(inverted) != 1:
-                  sys.exit(f"the {library} check is not where it was expected")
-              script = script.replace(inverted, "")
-          (folder / "ninja2-run.php").write_text(script, encoding="latin-1")
-          match = 'preg_match("/" . str_replace("/", "\\\\/", $p) . "/", $s)'
-          shim = "<?php\nfunction ereg($p, $s) { return " + match + "; }\n"
-          (folder / "shim.php").write_text(shim)
-          FIX
-
-      - name: Exchange the boundary files in both directions
-        env:
-          PYTHONPATH: src
-          NINJA: >-
-            php -d error_reporting=E_ERROR -d memory_limit=-1
-            -d auto_prepend_file=${{ runner.temp }}/ninja/shim.php ${{ runner.temp }}/ninja/ninja2-run.php
-        run: python scripts/interop.py --tool ninja --work "$RUNNER_TEMP/interop"
-
   open-vcdiff:
     name: open-vcdiff and anypatch exchange every boundary patch
     runs-on: ubuntu-26.04
@@ -455,44 +405,6 @@ jobs:
         env:
           PYTHONPATH: src
         run: python scripts/interop.py --tool open-vcdiff --work "$RUNNER_TEMP/interop"
-
-  ninja1:
-    name: NINJA 1.01 and anypatch exchange every boundary patch
-    runs-on: ubuntu-26.04
-    env:
-      NINJA1_SHA256: ad96df73d469df0846c8960d27a1442a6473c31686b52e21b0123dafab37c95e
-      NINJA_ARCHIVE: https://web.archive.org/web/20070102143121id_
-      NINJA_FILE: http://ninja.cinnamonpirate.com:80/files/ninja-1.01php.tar.gz
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.14"
-
-      - name: Install the reference tool
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq php-cli
-          curl -sfL -o "$RUNNER_TEMP/ninja1.download" "$NINJA_ARCHIVE/$NINJA_FILE"
-          if [ "$(head -c 2 "$RUNNER_TEMP/ninja1.download" | od -An -tx1 | tr -d ' ')" = "1f8b" ]; then
-            gunzip -c "$RUNNER_TEMP/ninja1.download" > "$RUNNER_TEMP/ninja1.tar"
-          else
-            cp "$RUNNER_TEMP/ninja1.download" "$RUNNER_TEMP/ninja1.tar"
-          fi
-          echo "${NINJA1_SHA256}  $RUNNER_TEMP/ninja1.tar" | sha256sum -c -
-          mkdir -p "$RUNNER_TEMP/ninja1"
-          tar -xf "$RUNNER_TEMP/ninja1.tar" -C "$RUNNER_TEMP/ninja1" --strip-components=1 ninja-1.01php/ninja.php
-          # shellcheck disable=SC2016
-          printf '<?php\nfunction split($p, $s) { return explode($p, $s); }\n' > "$RUNNER_TEMP/ninja1/shim.php"
-
-      - name: Exchange the boundary files in both directions
-        env:
-          PYTHONPATH: src
-          NINJA1: >-
-            php -d short_open_tag=On -d memory_limit=-1
-            -d auto_prepend_file=${{ runner.temp }}/ninja1/shim.php ${{ runner.temp }}/ninja1/ninja.php
-        run: python scripts/interop.py --tool ninja1 --work "$RUNNER_TEMP/interop"
 
   hdiffpatch:
     name: HDiffPatch and anypatch exchange every boundary patch

@@ -27,13 +27,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### What's new
 
 - VCDIFF reads open-vcdiff's S version, with interleaved windows and its zero-seeded Adler-32, and application code tables in both the RFC 3284 layout igir reads and the layout open-vcdiff reads. Reference patches from open-vcdiff are in the suite.
-- PAT, the FireFlower format for Neo Geo hacks and the output of `fc /b`, is read and written with `--format pat`. It holds only byte changes, so a size change is refused.
-- A RUP patch that names a ROM type is applied the way NINJA 2.0 applies it: the dump is converted to NINJA's common form before the MD5 check, removing iNES, Famtasia, copier and Lynx headers and undoing UNIF, HiROM, SMD and v64 layouts, and NES, NSRT and Lynx headers go back on afterwards. A dump that does not convert is compared as it is.
+- PAT, the FireFlower format for Neo Geo modifications and the output of `fc /b`, is read and written with `--format pat`. It holds only byte changes, so a size change is refused.
+- A RUP patch that names a ROM type is applied the way NINJA 2.0 applies it: the image is converted to NINJA's common form before the MD5 check, removing iNES, Famtasia, copier and Lynx headers and undoing UNIF, HiROM, SMD and v64 layouts, and NES, NSRT and Lynx headers go back on afterwards. A image that does not convert is compared as it is.
 - Patches are exchanged with Flips, ApplyPPF, MakePPF, bsdiff4 and NINJA 2.0 as well, on every generated limit case.
 
 ### Fixes
 
-- PPF compares only the block-check bytes a short dump holds, and identical files get one no-op record, since ApplyPPF loops forever and RomPatcher.js crashes on a PPF with no records.
+- PPF compares only the block-check bytes a short image holds, and identical files get one no-op record, since ApplyPPF loops forever and RomPatcher.js crashes on a PPF with no records.
 
 ## 0.5.0
 
@@ -64,7 +64,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### What's new
 
-- APS patches made for byte-swapped `.v64` dumps are read and applied to the native dump. All 21 community APS patches for the Mr. Backup Z64 apply and pass the boot checksum.
+- APS patches made for byte-swapped `.v64` images are read and applied to the native image. All 21 community APS patches for the Mr. Backup Z64 apply and pass the boot checksum.
 - The README no longer calls the formats experimental.
 
 ## 0.2.0

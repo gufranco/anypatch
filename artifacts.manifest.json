@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "note": "Reference tools this project neither ships nor downloads. Supply each one yourself, legally obtained, in the gitignored external/ folder. Identify what you place there by its filename and every value in accepted: size in bytes plus CRC32, MD5, SHA-1, and SHA-256. sha256 decides accept or reject; the rest identify and cross-check. No download location is recorded here, by design. CI and the gate suite never use these; they drive the optional local interop cross-checks only.",
+  "artifacts": [
+    {
+      "id": "ninja-2.0",
+      "title": "NINJA 2.0 reference patcher",
+      "filename": "ninja-2.0-src-beta20060726.zip",
+      "form": "the distribution zip as a whole; contains ninja2.php",
+      "accepted": [
+        {
+          "size": 19089,
+          "sha256": "4ae3e01ec8db638a7f4106763ecb8b921c0411e8009aa1ebfade1a34fb93c91a",
+          "sha1": "a76dc32cdb38cb0c577130ad8d35339c3c3164e9",
+          "md5": "d2ca2614754d49b2d09f68e982f675cc",
+          "crc32": "dc450446"
+        }
+      ],
+      "provenance": "GPL tool by Derrick Sobodash for the optional RUP and PAT interop cross-check; the digests match the NINJA 2.0 distribution this project's interop formerly verified, supplied from the developer's own copy"
+    },
+    {
+      "id": "ninja-1.01",
+      "title": "NINJA 1.01 reference patcher",
+      "filename": "ninja-1.01php.tar",
+      "form": "the tar decompressed from the tar.gz distribution, because gzip is not reproducible; contains ninja-1.01php/ninja.php",
+      "accepted": [
+        {
+          "size": 81920,
+          "sha256": "ad96df73d469df0846c8960d27a1442a6473c31686b52e21b0123dafab37c95e",
+          "sha1": "f66e23616c488573ab633d096ed9ec41288e9e33",
+          "md5": "145769222845197ace50714f8c90e03f",
+          "crc32": "8217565c"
+        }
+      ],
+      "provenance": "GPL tool by Derrick Sobodash for the optional NINJA 1 interop cross-check; the digests match the NINJA 1.01 distribution this project's interop formerly verified, supplied from the developer's own copy"
+    }
+  ]
+}

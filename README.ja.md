@@ -25,7 +25,7 @@ anypatch は、同じコードの上にあるひとつのライブラリとひ�
 ## 使い方
 
 ```console
-$ anypatch make clean.bin hacked.bin -o title.bps
+$ anypatch make clean.bin modified.bin -o title.bps
 wrote          title.bps, 38 bytes
 $ anypatch apply clean.bin title.bps fix.ips -o out.bin
 applied        title.bps, fix.ips
@@ -98,6 +98,12 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | xdelta、VCDIFF | はい | はい | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | パッチが持つ場合、各ウィンドウの Adler-32 チェックサム。xdelta3 の出力を、二次圧縮なし、LZMA、DJW、FGK のいずれでも読み込みます。open-vcdiff のインターリーブとチェックサム付きの S 版、および RFC 3284 と open-vcdiff の両方の形式のアプリケーション定義コード表も読みます |
 
 形式は中身で判定し、`.zps` か `.ip1` という名前の IPS だけを ZPS として読みます。各パッチはクリーンなソースにそれぞれ単独で当て、変わるバイトを比べます。同じバイトに違う値を書く 2 つのパッチは、すべての範囲と両方の値を示して拒否し、同じ値の書き込みは統合します。ソースのチェックサムを持つ形式のパッチは、ほかのファイルには両方の値を示して拒否し、ソースにすでに結果が入っていれば適用済みと報告します。1 GiB とソースのどちらよりも大きい結果を主張するパッチは、何も確保する前に拒否します。
+
+## 保存と合法的な利用
+
+anypatch は保存と相互運用のために存在します。ROM もパッチも同梱せず、入手先へのリンクも含みません。作業するファイルは利用者が用意し、合法的に保有する責任は利用者にあります。自分のカートリッジから作成したイメージ、利用許諾のあるパッチなどです。各形式は公開された仕様またはオープンな実装からクリーンルームで学んだもので、すべて [NOTICE.md](NOTICE.md) に記載しています。第三者のコードは一切複製していません。すべての変更を検査するスイート `uv run pytest` は、合成データのみで動作し、外部サイトには一切接続しません。
+
+任意の相互運用クロスチェックで使う参照ツールは、本プロジェクトでは同梱も取得もしません。各ツールは利用者が合法的に入手し、gitignore されたローカルの `external/` フォルダーに置いてください。[artifacts.manifest.json](artifacts.manifest.json) に、置くべきファイルの名前と SHA-256 を記載しているので、内容を確認できます。入手先は設計上あえて記載していません。
 
 ## インストール
 

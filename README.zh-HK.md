@@ -25,7 +25,7 @@ anypatch 是建立在同一份程式碼之上的一個程式庫和一個命令�
 ## 用法
 
 ```console
-$ anypatch make clean.bin hacked.bin -o title.bps
+$ anypatch make clean.bin modified.bin -o title.bps
 wrote          title.bps, 38 bytes
 $ anypatch apply clean.bin title.bps fix.ips -o out.bin
 applied        title.bps, fix.ips
@@ -98,6 +98,12 @@ Path("both.xdelta").write_bytes(api.merge(clean, patches, Format.XDELTA)[".xdelt
 | xdelta，VCDIFF | 是 | 是 | `.xdelta`、`.vcdiff`、`.xd3`、`.delta` | 修補檔附有時，每個視窗的 Adler-32 校驗和。讀取 xdelta3 的輸出，不論沒有二次壓縮、LZMA、DJW 或 FGK；也讀取 open-vcdiff 交錯且附校驗和的 S 版本，以及 RFC 3284 和 open-vcdiff 兩種排列的應用自訂碼表 |
 
 格式由內容決定；只有名為 `.zps` 或 `.ip1` 的 IPS 才按 ZPS 讀取。每個修補檔都單獨套用到乾淨的來源上，再比較各自改變的位元組。向同一位元組寫入不同值的兩個修補檔會被拒絕，並列出每個範圍和雙方的值；相同的寫入會合併。格式附有來源校驗和的修補檔，用在其他檔案上時會被拒絕並列出雙方的值；來源已經包含結果時，會報告為已套用。聲稱結果大於 1 GiB 且大於來源的修補檔，會在配置任何記憶體之前被拒絕。
+
+## 保存與合法使用
+
+anypatch 為保存與互通而存在。它不附帶任何 ROM 和修補檔，亦不包含取得它們的連結。你需自行提供所處理的檔案，並負責合法持有：由你自己的卡帶建立的映像、你獲授權使用的修補檔。每種格式都是從公開規格或開源實作中以淨室方式學習而來，全部列於 [NOTICE.md](NOTICE.md)；未複製任何第三方程式碼。為每次變更把關的測試套件 `uv run pytest` 完全以合成資料執行，不連接任何外部網站。
+
+可選的互通交叉核對所用的參考工具，本專案既不附帶亦不下載。請你自行合法取得，並放入被 gitignore 的本機 `external/` 資料夾。[artifacts.manifest.json](artifacts.manifest.json) 按名稱和 SHA-256 列出每個應放入的檔案，方便你核對內容；基於設計考量，不記錄任何取得位置。
 
 ## 安裝
 
