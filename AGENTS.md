@@ -19,7 +19,7 @@ This project is for preservation and interoperability, and it must stay safe to 
 
 ## Rules that are invisible in the code
 
-- Never publish to PyPI. Distribution is this repository's releases and the formula in `Formula/`.
+- Never publish to PyPI. Distribution is this repository's releases and the formula in the shared tap `gufranco/homebrew-tap`.
 - Every format is tested against reference patches from another program or from its specification, stored as data. A format with neither is not supported, and the README says why.
 - A patch whose format carries a checksum of its source is refused on any other file, naming the format and both values. Two patches that write different bytes to one offset are refused together, listing every range. Nothing is written after a refusal.
 - No code is copied from a reference. GPL sources are read only. [NOTICE.md](NOTICE.md) names every source and its license.
