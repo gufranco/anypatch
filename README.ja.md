@@ -148,7 +148,7 @@ uv run anypatch doctor
 | ゲート | コマンド |
 |:--|:--|
 | テスト、ステートメントとブランチ 100% のゲート付き | `uv run pytest --cov` |
-| 境界ファイルを参照ツールと交換 | `PYTHONPATH=src python scripts/interop.py --tool xdelta3 --work <dir>` |
+| 境界ファイルを参照ツールと交換 | `PYTHONPATH=src python .github/scripts/interop.py --tool xdelta3 --work <dir>` |
 | リント | `uv run ruff check .` |
 | フォーマット | `uv run ruff format --check .` |
 | 型、strict | `uv run mypy` |

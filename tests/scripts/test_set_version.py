@@ -8,8 +8,9 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def project(tmp_path: Path, recorded: str) -> Path:
-    (tmp_path / "scripts").mkdir()
-    shutil.copy(ROOT / "scripts" / "set-version.sh", tmp_path / "scripts" / "set-version.sh")
+    scripts = tmp_path / ".github" / "scripts"
+    scripts.mkdir(parents=True)
+    shutil.copy(ROOT / ".github" / "scripts" / "set-version.sh", scripts / "set-version.sh")
     package = tmp_path / "src" / "anypatch"
     package.mkdir(parents=True)
     (package / "version.py").write_text(recorded)
@@ -17,7 +18,7 @@ def project(tmp_path: Path, recorded: str) -> Path:
 
 
 def run(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    script = root / "scripts" / "set-version.sh"
+    script = root / ".github" / "scripts" / "set-version.sh"
     return subprocess.run(["bash", str(script), *args], capture_output=True, text=True, check=False)
 
 

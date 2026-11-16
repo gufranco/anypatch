@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "interop.py"
+SCRIPT = ROOT / ".github" / "scripts" / "interop.py"
 MAKER = '#!/bin/sh\nexec "{python}" -m anypatch make "$1" "$2" -o "$3" --format bdf\n'
 PATCHER = '#!/bin/sh\nexec "{python}" -m anypatch apply "$1" "$3" -o "$2"\n'
 BROKEN = "#!/bin/sh\necho refused >&2\nexit 3\n"

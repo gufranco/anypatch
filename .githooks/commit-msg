@@ -3,4 +3,4 @@
 set -euo pipefail
 
 root=$(git rev-parse --show-toplevel)
-exec bash "${root}/scripts/check-commits.sh" --message "$1"
+exec bash "${root}/.github/scripts/check-commits.sh" --message "$1"

@@ -43,7 +43,7 @@ jobs:
           else
             range="${AFTER}~1..${AFTER}"
           fi
-          bash scripts/check-commits.sh --range "${range}"
+          bash .github/scripts/check-commits.sh --range "${range}"
 
   lint:
     name: Format and lint
@@ -69,7 +69,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq shellcheck yamllint
-          shellcheck --severity=style --shell=bash scripts/*.sh .githooks/*
+          shellcheck --severity=style --shell=bash .github/scripts/*.sh .githooks/*
           yamllint -c .yamllint.yml .github
 
       - uses: pnpm/action-setup@v6
@@ -243,7 +243,7 @@ jobs:
       - name: Exchange the boundary files in both directions
         env:
           PYTHONPATH: src
-        run: python scripts/interop.py --tool xdelta3 --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool xdelta3 --work "$RUNNER_TEMP/interop"
 
   bsdiff43:
     name: mendsley bsdiff and anypatch exchange every boundary patch
@@ -271,7 +271,7 @@ jobs:
       - name: Exchange the boundary files in both directions
         env:
           PYTHONPATH: src
-        run: python scripts/interop.py --tool bsdiff43 --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool bsdiff43 --work "$RUNNER_TEMP/interop"
 
   flips:
     name: Flips and anypatch exchange every boundary patch
@@ -295,7 +295,7 @@ jobs:
       - name: Exchange the boundary files in both directions
         env:
           PYTHONPATH: src
-        run: python scripts/interop.py --tool flips --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool flips --work "$RUNNER_TEMP/interop"
 
   ppf:
     name: ApplyPPF, MakePPF and anypatch exchange every boundary patch
@@ -325,7 +325,7 @@ jobs:
       - name: Exchange the boundary files in both directions
         env:
           PYTHONPATH: src
-        run: python scripts/interop.py --tool makeppf3 --tool applyppf3 --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool makeppf3 --tool applyppf3 --work "$RUNNER_TEMP/interop"
 
   bsdiff4:
     name: bsdiff4 and anypatch exchange every boundary patch
@@ -343,7 +343,7 @@ jobs:
       - name: Exchange the boundary files in both directions
         env:
           PYTHONPATH: src
-        run: python scripts/interop.py --tool bsdiff4 --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool bsdiff4 --work "$RUNNER_TEMP/interop"
 
   open-vcdiff:
     name: open-vcdiff and anypatch exchange every boundary patch
@@ -370,7 +370,7 @@ jobs:
       - name: Exchange the boundary files in both directions
         env:
           PYTHONPATH: src
-        run: python scripts/interop.py --tool open-vcdiff --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool open-vcdiff --work "$RUNNER_TEMP/interop"
 
   hdiffpatch:
     name: HDiffPatch and anypatch exchange every boundary patch
@@ -400,7 +400,7 @@ jobs:
       - name: Exchange the boundary files in both directions
         env:
           PYTHONPATH: src
-        run: python scripts/interop.py --tool hdiffpatch --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool hdiffpatch --work "$RUNNER_TEMP/interop"
 
   vpatch:
     name: NSIS VPatch and anypatch exchange every boundary patch
@@ -426,15 +426,15 @@ jobs:
           source="$RUNNER_TEMP/nsis/Contrib/VPatch/Source"
           cc -O2 -c "$source/GenPat/md5.c" -o md5.o
           c++ -O2 -std=c++11 -o bin/genpat "$source"/GenPat/*.cpp md5.o -lz
-          cc -O2 -std=c99 -Wall -Wno-unused-function -I"$GITHUB_WORKSPACE/scripts/vpatch" \
-            -I"$source/Plugin" -o bin/vpatch-apply "$GITHUB_WORKSPACE/scripts/vpatch/main.c" \
+          cc -O2 -std=c99 -Wall -Wno-unused-function -I"$GITHUB_WORKSPACE/.github/scripts/vpatch" \
+            -I"$source/Plugin" -o bin/vpatch-apply "$GITHUB_WORKSPACE/.github/scripts/vpatch/main.c" \
             "$source/Plugin/apply_patch.c" "$source/Plugin/checksum.c" "$source/Plugin/md5.c"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       - name: Exchange the boundary files in both directions
         env:
           PYTHONPATH: src
-        run: python scripts/interop.py --tool vpatch --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool vpatch --work "$RUNNER_TEMP/interop"
 
   jojodiff:
     name: JojoDiff and anypatch exchange every boundary patch
@@ -461,7 +461,7 @@ jobs:
       - name: Exchange the boundary files in both directions
         env:
           PYTHONPATH: src
-        run: python scripts/interop.py --tool jojodiff --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool jojodiff --work "$RUNNER_TEMP/interop"
 
   dldi:
     name: dlditool and anypatch patch every generated DLDI case alike
@@ -488,7 +488,7 @@ jobs:
       - name: Patch every generated case with dlditool and anypatch
         env:
           PYTHONPATH: src
-        run: python scripts/interop.py --tool dlditool --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool dlditool --work "$RUNNER_TEMP/interop"
 
   xdelta1:
     name: xdelta 1.1 and anypatch exchange every boundary patch
@@ -533,7 +533,7 @@ jobs:
       - name: Exchange the boundary files in both directions
         env:
           PYTHONPATH: src
-        run: python scripts/interop.py --tool xdelta1 --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool xdelta1 --work "$RUNNER_TEMP/interop"
 
   bsp:
     name: bsppatch.js applies every boundary BSP anypatch writes
@@ -559,9 +559,9 @@ jobs:
       - name: Apply the boundary patches with bsppatch.js
         env:
           PYTHONPATH: src
-          BSP_HARNESS: ${{ github.workspace }}/scripts/bsp/harness.js
+          BSP_HARNESS: ${{ github.workspace }}/.github/scripts/bsp/harness.js
           BSPPATCH: ${{ runner.temp }}/bsp/bsppatch.js
-        run: python scripts/interop.py --tool bsppatch --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool bsppatch --work "$RUNNER_TEMP/interop"
 
   igir:
     name: igir applies every boundary patch anypatch writes
@@ -586,7 +586,7 @@ jobs:
         env:
           PYTHONPATH: src
           IGIR: ${{ runner.temp }}/igir/node_modules/igir
-        run: python scripts/interop.py --tool igir --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool igir --work "$RUNNER_TEMP/interop"
 
   gdiff:
     name: javaxdelta and anypatch exchange every boundary patch
@@ -619,7 +619,7 @@ jobs:
         env:
           PYTHONPATH: src
           JAVAXDELTA: ${{ runner.temp }}/javaxdelta.jar:${{ runner.temp }}/trove.jar
-        run: python scripts/interop.py --tool javaxdelta --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool javaxdelta --work "$RUNNER_TEMP/interop"
 
   romjs:
     name: RomPatcher.js, bsdiff and anypatch exchange every boundary patch
@@ -665,4 +665,4 @@ jobs:
           PYTHONPATH: src
           ROMJS: ${{ runner.temp }}/romjs
           ROMJS_HARNESS: ${{ runner.temp }}/romjs.js
-        run: python scripts/interop.py --tool romjs --tool bsdiff --work "$RUNNER_TEMP/interop"
+        run: python .github/scripts/interop.py --tool romjs --tool bsdiff --work "$RUNNER_TEMP/interop"

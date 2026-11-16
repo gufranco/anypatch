@@ -148,7 +148,7 @@ uv run anypatch doctor
 | Gate | Command |
 |:--|:--|
 | Tests, with the 100% statement and branch gate | `uv run pytest --cov` |
-| Exchange the boundary files with a reference tool | `PYTHONPATH=src python scripts/interop.py --tool xdelta3 --work <dir>` |
+| Exchange the boundary files with a reference tool | `PYTHONPATH=src python .github/scripts/interop.py --tool xdelta3 --work <dir>` |
 | Lint | `uv run ruff check .` |
 | Format | `uv run ruff format --check .` |
 | Types, strict | `uv run mypy` |

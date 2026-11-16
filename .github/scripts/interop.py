@@ -159,7 +159,7 @@ def _xdelta1() -> list[Exchange]:
 
 
 def _igir() -> list[Exchange]:
-    apply = 'node scripts/igir/harness.mjs "$IGIR" {patch} {source} {out}'
+    apply = 'node .github/scripts/igir/harness.mjs "$IGIR" {patch} {source} {out}'
     return [Exchange("igir", kind, None, apply) for kind in IGIR_READS]
 
 

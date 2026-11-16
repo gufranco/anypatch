@@ -148,7 +148,7 @@ uv run anypatch doctor
 | 檢查 | 指令 |
 |:--|:--|
 | 測試，附語句和分支 100% 的門檻 | `uv run pytest --cov` |
-| 與參考工具交換邊界檔案 | `PYTHONPATH=src python scripts/interop.py --tool xdelta3 --work <dir>` |
+| 與參考工具交換邊界檔案 | `PYTHONPATH=src python .github/scripts/interop.py --tool xdelta3 --work <dir>` |
 | 程式碼檢查 | `uv run ruff check .` |
 | 格式 | `uv run ruff format --check .` |
 | 型別，strict | `uv run mypy` |

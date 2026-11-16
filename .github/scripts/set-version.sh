@@ -4,7 +4,7 @@ set -euo pipefail
 
 readonly VERSION_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+([-+].*)?$'
 
-root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 readonly VERSION_FILE="${root}/src/anypatch/version.py"
 
 fail() {

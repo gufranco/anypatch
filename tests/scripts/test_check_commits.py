@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "check-commits.sh"
+SCRIPT = ROOT / ".github" / "scripts" / "check-commits.sh"
 
 
 def check(*args: str, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
