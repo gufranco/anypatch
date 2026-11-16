@@ -64,7 +64,7 @@ jobs:
           tag=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
           if [ -z "${tag}" ] || [ "${tag}" = "${BEFORE}" ]; then
             echo "tag=" >>"$GITHUB_OUTPUT"
-            echo "::notice title=No release::nothing new was released, so no asset is attached or moved"
+            echo "nothing new was released, so no asset is attached or moved"
           else
             echo "tag=${tag}" >>"$GITHUB_OUTPUT"
             echo "released tag: ${tag}"
